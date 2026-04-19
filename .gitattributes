@@ -1,0 +1,43 @@
+# Default: auto-detect text files, always store & check out with LF
+* text=auto eol=lf
+
+# Explicit text (just in case detection wavers)
+*.cs          text eol=lf
+*.csproj      text eol=lf
+*.sln         text eol=lf
+*.json        text eol=lf
+*.yml         text eol=lf
+*.yaml        text eol=lf
+*.md          text eol=lf
+*.http        text eol=lf
+*.ts          text eol=lf
+*.tsx         text eol=lf
+*.js          text eol=lf
+*.jsx         text eol=lf
+*.html        text eol=lf
+*.css         text eol=lf
+*.sh          text eol=lf
+Dockerfile    text eol=lf
+.gitignore    text eol=lf
+.gitattributes text eol=lf
+.env.example  text eol=lf
+
+# Shell scripts should always be LF (they break if CRLF)
+*.sh          text eol=lf
+
+# Windows-native files (rare, but keep CRLF if we ever add one)
+*.bat         text eol=crlf
+*.cmd         text eol=crlf
+*.ps1         text eol=crlf
+
+# Binary — never touch
+*.png         binary
+*.jpg         binary
+*.jpeg        binary
+*.gif         binary
+*.ico         binary
+*.pdf         binary
+*.zip         binary
+*.gz          binary
+*.woff        binary
+*.woff2       binary
