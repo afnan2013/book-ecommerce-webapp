@@ -1,5 +1,5 @@
 using BookEcom.Api.Auth;
-using BookEcom.Api.Auth.Permissions;
+using BookEcom.Api.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -17,17 +17,6 @@ public class AppDbContext(DbContextOptions<AppDbContext> options)
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
-        // Permission.Name must be unique — "books.read" can only exist once.
-        builder.Entity<Permission>()
-            .HasIndex(p => p.Name)
-            .IsUnique();
-
-        // Composite primary keys for the join tables.
-        builder.Entity<RolePermission>()
-            .HasKey(rp => new { rp.RoleId, rp.PermissionId });
-
-        builder.Entity<UserPermission>()
-            .HasKey(up => new { up.UserId, up.PermissionId });
+        builder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
     }
 }

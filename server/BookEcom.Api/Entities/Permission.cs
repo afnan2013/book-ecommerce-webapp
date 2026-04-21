@@ -1,4 +1,4 @@
-namespace BookEcom.Api.Auth.Permissions;
+namespace BookEcom.Api.Entities;
 
 public class Permission
 {

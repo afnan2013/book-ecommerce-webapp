@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 
-namespace BookEcom.Api.Auth.Permissions;
+namespace BookEcom.Api.Entities;
 
 public class RolePermission
 {

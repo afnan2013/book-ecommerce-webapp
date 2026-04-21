@@ -1,4 +1,5 @@
 using BookEcom.Api.Data;
+using BookEcom.Api.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
