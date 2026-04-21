@@ -1,10 +1,12 @@
 using BookEcom.Api.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Api.Controllers;
 
 [ApiController]
+[Authorize]
 [Route("api/[controller]")]
 public class BooksController(AppDbContext db, ILogger<BooksController> logger) : ControllerBase
 {

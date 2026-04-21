@@ -1,18 +1,65 @@
+using System.Text;
+using BookEcom.Api.Auth;
+using BookEcom.Api.Auth.Jwt;
 using BookEcom.Api.Data;
+using BookEcom.Api.Data.Seed;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// ── Services ───────────────────────────────────────────────────────────────
 
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
         .UseSnakeCaseNamingConvention());
+
+builder.Services
+    .AddIdentity<AppUser, IdentityRole<int>>(opts =>
+    {
+        opts.Password.RequiredLength = 8;
+        opts.User.RequireUniqueEmail = true;
+        opts.SignIn.RequireConfirmedEmail = false; // dev-only for now
+    })
+    .AddEntityFrameworkStores<AppDbContext>()
+    .AddDefaultTokenProviders();
+
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+var jwtSection = builder.Configuration.GetSection("Jwt");
+var signingKey = jwtSection["SigningKey"]
+    ?? throw new InvalidOperationException("Jwt:SigningKey is not configured.");
+
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(opts =>
+    {
+        opts.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSection["Issuer"],
+            ValidAudience = jwtSection["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey)),
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
@@ -20,9 +67,12 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader()
               .AllowAnyMethod()));
 
+builder.Services.AddHostedService<IdentitySeeder>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ── Pipeline ───────────────────────────────────────────────────────────────
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -30,6 +80,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
