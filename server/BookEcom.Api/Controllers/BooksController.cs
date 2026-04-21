@@ -1,67 +1,68 @@
+using BookEcom.Api.Data;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class BooksController(ILogger<BooksController> logger) : ControllerBase
+public class BooksController(AppDbContext db, ILogger<BooksController> logger) : ControllerBase
 {
+    private readonly AppDbContext _db = db;
     private readonly ILogger<BooksController> _logger = logger;
-    private static readonly List<Book> _books =
-    [
-        new Book { Id = 1, Title = "Clean Code",                            Author = "Robert C. Martin",            Price = 29.99m },
-        new Book { Id = 2, Title = "The Pragmatic Programmer",              Author = "Andrew Hunt & David Thomas",  Price = 34.50m },
-        new Book { Id = 3, Title = "Designing Data-Intensive Applications", Author = "Martin Kleppmann",            Price = 42.00m },
-    ];
 
     // GET /api/books
     [HttpGet]
-    public IEnumerable<Book> GetAll()
+    public async Task<IEnumerable<Book>> GetAll(CancellationToken ct)
     {
-        _logger.LogInformation("GET /api/books — returning {Count} books", _books.Count);
-        return _books;
+        var books = await _db.Books.AsNoTracking().ToListAsync(ct);
+        _logger.LogInformation("GET /api/books — returning {Count} books", books.Count);
+        return books;
     }
 
     // GET /api/books/{id}
     [HttpGet("{id:int}")]
-    public ActionResult<Book> GetById(int id)
+    public async Task<ActionResult<Book>> GetById(int id, CancellationToken ct)
     {
-        var book = _books.FirstOrDefault(b => b.Id == id);
+        var book = await _db.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id, ct);
         return book is null ? NotFound() : Ok(book);
     }
 
     // POST /api/books
     [HttpPost]
-    public ActionResult<Book> Create(Book book)
+    public async Task<ActionResult<Book>> Create(Book book, CancellationToken ct)
     {
-        book.Id = _books.Count == 0 ? 1 : _books.Max(b => b.Id) + 1;
-        _books.Add(book);
+        _db.Books.Add(book);
+        await _db.SaveChangesAsync(ct);
+
         _logger.LogInformation("POST /api/books — created book {Id}", book.Id);
         return CreatedAtAction(nameof(GetById), new { id = book.Id }, book);
     }
 
     // PUT /api/books/{id}
     [HttpPut("{id:int}")]
-    public IActionResult Update(int id, Book updated)
+    public async Task<IActionResult> Update(int id, Book updated, CancellationToken ct)
     {
-        var existing = _books.FirstOrDefault(b => b.Id == id);
+        var existing = await _db.Books.FindAsync([id], ct);
         if (existing is null) return NotFound();
 
         existing.Title  = updated.Title;
         existing.Author = updated.Author;
         existing.Price  = updated.Price;
 
+        await _db.SaveChangesAsync(ct);
         return NoContent();
     }
 
     // DELETE /api/books/{id}
     [HttpDelete("{id:int}")]
-    public IActionResult Delete(int id)
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
     {
-        var book = _books.FirstOrDefault(b => b.Id == id);
+        var book = await _db.Books.FindAsync([id], ct);
         if (book is null) return NotFound();
 
-        _books.Remove(book);
+        _db.Books.Remove(book);
+        await _db.SaveChangesAsync(ct);
         return NoContent();
     }
 }
