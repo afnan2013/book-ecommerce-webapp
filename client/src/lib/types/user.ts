@@ -1,0 +1,25 @@
+export const UserType = {
+  Admin: 1,
+  Seller: 2,
+  Buyer: 3,
+} as const;
+
+export type UserType = (typeof UserType)[keyof typeof UserType];
+
+export const UserTypeLabel: Record<UserType, string> = {
+  [UserType.Admin]: 'Admin',
+  [UserType.Seller]: 'Seller',
+  [UserType.Buyer]: 'Buyer',
+};
+
+export interface User {
+  id: number;
+  email: string;
+  fullName: string;
+  userType: UserType;
+}
+
+export interface UserRole {
+  id: number;
+  name: string;
+}
