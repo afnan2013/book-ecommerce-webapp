@@ -1,3 +1,5 @@
+import type { Permission } from './permission';
+
 export const UserType = {
   Admin: 1,
   Seller: 2,
@@ -22,4 +24,10 @@ export interface User {
 export interface UserRole {
   id: number;
   name: string;
+}
+
+export interface UserDetail extends User {
+  concurrencyStamp: string;
+  roles: UserRole[];
+  directPermissions: Permission[];
 }
