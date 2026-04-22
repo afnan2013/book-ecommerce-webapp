@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Link, Navigate } from 'react-router-dom';
@@ -10,7 +9,7 @@ import { UserType } from '@/lib/types/user';
 import { isApiProblem } from '@/lib/types/problem';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { FormField } from '@/components/FormField';
 import {
   Card,
   CardContent,
@@ -58,20 +57,20 @@ export function RegisterPage() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-          <Field label="Full name" error={errors.fullName?.message}>
+          <FormField label="Full name" error={errors.fullName?.message}>
             <Input autoComplete="name" {...register('fullName')} />
-          </Field>
-          <Field label="Email" error={errors.email?.message}>
+          </FormField>
+          <FormField label="Email" error={errors.email?.message}>
             <Input type="email" autoComplete="email" {...register('email')} />
-          </Field>
-          <Field label="Password" error={errors.password?.message}>
+          </FormField>
+          <FormField label="Password" error={errors.password?.message}>
             <Input
               type="password"
               autoComplete="new-password"
               {...register('password')}
             />
-          </Field>
-          <Field label="Account type" error={errors.userType?.message}>
+          </FormField>
+          <FormField label="Account type" error={errors.userType?.message}>
             <Controller
               control={control}
               name="userType"
@@ -86,7 +85,7 @@ export function RegisterPage() {
                 </select>
               )}
             />
-          </Field>
+          </FormField>
           <Button
             type="submit"
             className="w-full"
@@ -103,23 +102,5 @@ export function RegisterPage() {
         </form>
       </CardContent>
     </Card>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <Label>{label}</Label>
-      {children}
-      {error && <p className="text-sm text-destructive">{error}</p>}
-    </div>
   );
 }
