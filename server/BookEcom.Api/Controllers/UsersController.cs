@@ -36,6 +36,93 @@ public class UsersController(
         });
     }
 
+    // POST /api/users
+    [HttpPost]
+    public async Task<ActionResult<UserResponse>> Create(CreateUserRequest req, CancellationToken ct)
+    {
+        var user = new AppUser
+        {
+            UserName = req.Email,
+            Email = req.Email,
+            FullName = req.FullName,
+            UserType = req.UserType,
+        };
+
+        var result = await userManager.CreateAsync(user, req.Password);
+        if (!result.Succeeded)
+        {
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        logger.LogInformation(
+            "POST /api/users — admin created {UserType} {Email}",
+            req.UserType, req.Email);
+
+        var response = await BuildUserResponse(user, ct);
+        return CreatedAtAction(nameof(GetById), new { id = user.Id }, response);
+    }
+
+    // DELETE /api/users/{id}
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> Delete(int id, CancellationToken ct)
+    {
+        var user = await userManager.FindByIdAsync(id.ToString());
+        if (user is null) return NotFound();
+
+        // Protect: admin cannot delete their own account (would invalidate their session).
+        var currentUserIdStr = userManager.GetUserId(User);
+        if (int.TryParse(currentUserIdStr, out var currentUserId) && currentUserId == id)
+        {
+            return BadRequest(new { error = "You cannot delete your own account." });
+        }
+
+        // Protect: cannot delete the last SuperAdmin.
+        var userRoles = await userManager.GetRolesAsync(user);
+        if (userRoles.Contains(RoleNames.SuperAdmin, StringComparer.OrdinalIgnoreCase))
+        {
+            var superAdminRole = await roleManager.FindByNameAsync(RoleNames.SuperAdmin);
+            if (superAdminRole is not null)
+            {
+                var superAdminCount = await db.UserRoles
+                    .CountAsync(ur => ur.RoleId == superAdminRole.Id, ct);
+                if (superAdminCount <= 1)
+                {
+                    return BadRequest(new
+                    {
+                        error = "Cannot delete the last SuperAdmin user."
+                    });
+                }
+            }
+        }
+
+        // ── Explicit transaction ───────────────────────────────────────────
+        // Two writes must succeed together: our custom UserPermissions table
+        // (EF cascade SHOULD cover it, but being explicit documents intent)
+        // and the Identity user row (which cascades UserRoles via FK).
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        try
+        {
+            await db.UserPermissions.Where(up => up.UserId == id).ExecuteDeleteAsync(ct);
+
+            var result = await userManager.DeleteAsync(user);
+            if (!result.Succeeded)
+            {
+                await transaction.RollbackAsync(ct);
+                return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            }
+
+            await transaction.CommitAsync(ct);
+        }
+        catch (DbUpdateException)
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
+
+        logger.LogInformation("DELETE /api/users/{Id} — deleted {Email}", id, user.Email);
+        return NoContent();
+    }
+
     // GET /api/users
     [HttpGet]
     public async Task<IEnumerable<UserResponse>> GetAll(CancellationToken ct)
