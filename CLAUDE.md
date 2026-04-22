@@ -27,94 +27,139 @@ These are starting points. Refine them as we build.
 
 ## Tech stack
 
-| Layer        | Choice                                           |
-| ------------ | ------------------------------------------------ |
-| Frontend     | React                                            |
-| Backend      | .NET Core (ASP.NET Core Web API)                 |
-| Database     | PostgreSQL                                       |
-| ORM          | Entity Framework Core (Npgsql provider)          |
-| Payments     | Mock — in-process service, no external provider  |
-| Orchestration| Docker + docker-compose for db, server, client   |
+| Layer         | Choice                                                             |
+| ------------- | ------------------------------------------------------------------ |
+| Backend       | .NET 10 (ASP.NET Core Web API) + ASP.NET Core Identity + JWT       |
+| Database      | PostgreSQL via Npgsql + Entity Framework Core                      |
+| Frontend      | React 19 + Vite + TypeScript (strict, `erasableSyntaxOnly`)        |
+| Client state  | Zustand (with `persist` middleware, localStorage-backed)           |
+| Server state  | TanStack Query v5 over an axios client                             |
+| Routing       | React Router v7 (`createBrowserRouter`)                            |
+| Forms         | react-hook-form + zod (+ `@hookform/resolvers`)                    |
+| UI            | shadcn/ui on Tailwind v4 (Nova preset, Radix primitives, Lucide)   |
+| Toasts        | sonner                                                             |
+| Payments      | Mock — in-process service, no external provider                    |
+| Orchestration | Docker + docker-compose for db (server/client containerization pending) |
 
-## Project layout (target)
+## Project layout
+
+### Actual today
 
 ```
 book-ecommerce-app/
-  client/              # React app
-  server/              # .NET Core solution
-    BookEcom.Api/      # ASP.NET Core Web API
-    BookEcom.Domain/   # Entities, value objects, domain rules
-    BookEcom.Infrastructure/ # EF Core, DbContext, repositories, external integrations
-    BookEcom.Application/    # Use cases / services / DTOs (optional, if we go clean-ish)
-    BookEcom.Tests/          # Unit / integration tests
-  docker-compose.yml   # db + server + client
-  .env.example         # sample env vars (never commit real secrets)
-  CLAUDE.md
-  README.md
+  client/                           # Vite + React + TS, feature-sliced
+    src/
+      app/                          # queryClient, route guards
+      components/
+        ui/                         # shadcn primitives
+        layout/                     # Public/Admin/Dashboard layouts
+      features/                     # feature folders: api.ts + hooks.ts + schemas.ts + pages/
+        {auth, admin-users, admin-roles, permissions, buyer, seller, shared}/
+      lib/                          # apiClient, queryKeys, types/, handleMutationError, utils
+      stores/                       # Zustand stores (authStore)
+      router.tsx
+      main.tsx
+  server/
+    BookEcom.Api/                   # single project today; see "Target" below
+      Auth/                         # AppUser, UserType, JwtTokenService, PermissionNames, RoleNames
+      Controllers/
+      Data/
+        Configurations/             # IEntityTypeConfiguration<T> per entity
+        Seed/IdentitySeeder.cs
+      Dtos/
+      Entities/
+      Migrations/
+  docker-compose.yml                # Postgres only; API/client containers pending
 ```
 
-The split between `Domain`/`Application`/`Infrastructure`/`Api` is a common clean-architecture layout that interviewers often ask about. We can start simpler and refactor into it once the concepts land.
+### Target (clean-architecture refactor, deferred)
+
+```
+server/
+  BookEcom.Api/                     # ASP.NET Core Web API — composition root
+  BookEcom.Domain/                  # Entities, value objects, domain rules
+  BookEcom.Infrastructure/          # EF Core, DbContext, repositories, external integrations
+  BookEcom.Application/             # Use cases / services / DTOs
+  BookEcom.Tests/                   # xUnit + WebApplicationFactory + Testcontainers
+```
+
+Partial progress: entities are already in `Entities/` and EF configs are extracted to `Data/Configurations/` — the domain-layer extraction will be mostly mechanical when prioritized.
 
 ## Conventions
 
 ### Backend (.NET Core)
-- Target **.NET 10** (current LTS, released Nov 2025, supported through Nov 2028).
+
+- Target **.NET 10** (LTS, released Nov 2025).
 - **Async all the way** for I/O: `async`/`await`, `CancellationToken` on controller/service methods.
 - Use **DTOs** at API boundaries; do not expose EF entities directly.
-- Prefer **constructor injection**; avoid service locators.
-- **Migrations** via EF Core CLI (`dotnet ef migrations add <Name>`). Never edit the database schema by hand.
-- Follow standard REST: plural resource names (`/api/books`, `/api/orders`), proper HTTP verbs and status codes.
-- Validate input with data annotations or FluentValidation — pick one and be consistent.
-- Return `ProblemDetails` for errors (RFC 7807) — interviewers like seeing this.
+- Prefer **constructor injection** (primary constructors where they shorten things).
+- **Migrations** via EF Core CLI (`dotnet ef migrations add <Name>`). Never edit schema by hand.
+- Standard REST: plural resource names (`/api/books`, `/api/users`), proper verbs and status codes.
+- Input validation via data annotations for now (FluentValidation decision pending).
+- **Error format TODO** — CLAUDE.md wants RFC 7807 `ProblemDetails` but controllers currently return ad-hoc `{ error: "..." }`. The client has an `ApiProblem` parser ready; server retrofit is a pending follow-up (see `project_api_review_2026-04-22.md`).
+- Optimistic concurrency on user + role mutations via `ConcurrencyStamp`. 409 on mismatch.
 
 ### Frontend (React)
-- Keep it simple at first: functional components, hooks, fetch/axios.
-- Defer state-management library decisions (Redux / Zustand / React Query) until we actually feel the pain.
-- Talk to the API through a single `api` client module so base URL / auth is configured in one place.
+
+- **Server state is React Query, not `useEffect` + `fetch`.** Every server read is a `useQuery`; every write is a `useMutation`. Cache invalidation drives re-fetches.
+- **Client state is Zustand, not Context.** One store per concern (currently just `authStore`). Persisted with the `persist` middleware where needed. Don't reach for Context or RTK.
+- **HTTP via a single axios instance** (`lib/apiClient.ts`) with a request interceptor that attaches the JWT and a response interceptor that clears the auth store on 401 + normalizes `application/problem+json` bodies into a typed `ApiProblem`.
+- **Forms: react-hook-form + zod.** zod schemas double as TypeScript types via `z.infer`. Don't hand-roll `useState` per field.
+- **UI: shadcn/ui components in `src/components/ui/`.** These are code we own — edit them freely. Don't introduce MUI or Chakra.
+- **Feature folders** own `api.ts` (typed axios calls), `hooks.ts` (React Query wrappers), `schemas.ts` (zod), `pages/`. Cross-feature imports go through the feature root, not into its `pages/`.
+- **409 / optimistic concurrency UX:** use the shared `lib/handleMutationError.ts` helper — it toasts and invalidates. For edit surfaces that hydrate from a query, use `key={data.concurrencyStamp}` on the edit sections so a successful save or invalidate-driven refetch cleanly remounts local form state (no `useEffect` sync — see `feedback_client_patterns.md` in memory).
+- **TypeScript enums are forbidden** (`erasableSyntaxOnly: true` in tsconfig). Use `as const` objects + a derived union type.
+- **JWT in localStorage** via Zustand persist. Refresh-token flow is a later phase — until then, short access-token lifetime is the mitigation.
 
 ### Database (PostgreSQL)
+
 - Schema owned by EF Core migrations.
-- Use `snake_case` table/column names via Npgsql naming conventions (interviewers often ask about this).
-- Money values: store as `decimal` (EF) / `numeric` (Postgres) — never `float`/`double`.
+- `snake_case` table/column names via Npgsql naming conventions.
+- Money values: `decimal` (EF) / `numeric` (Postgres) — never `float`/`double`.
 - Timestamps: `timestamp with time zone` (UTC only).
 
 ### Docker
-- Each service has its own `Dockerfile` (multi-stage build for .NET and the React app).
-- `docker-compose.yml` wires up: `db` (Postgres), `server` (.NET API), `client` (React).
-- Use a named volume for Postgres data so restarts don't wipe the db.
-- Secrets/config via `.env` + env vars, never hardcoded.
+
+- Postgres runs via `docker-compose.yml` today.
+- API and client Dockerfiles are a later task — when added, multi-stage build for .NET and the React app, Postgres named volume to survive restarts, secrets via `.env` + env vars.
 
 ## Learning emphasis
 
-Since this is interview prep, when we implement a feature please surface the **teachable moments** briefly:
+Since this is interview prep, when we implement a feature surface the **teachable moments** briefly:
 
 - **DI & service lifetimes** (Singleton / Scoped / Transient) — when and why.
 - **Middleware pipeline** and request lifecycle.
-- **EF Core**: change tracking, lazy vs eager loading, `AsNoTracking`, N+1 problems, migrations.
+- **EF Core**: change tracking, lazy vs eager loading, `AsNoTracking`, N+1 problems, migrations, `ExecuteDeleteAsync` vs change tracker.
 - **Async/await**: `ConfigureAwait`, deadlocks, `CancellationToken` propagation.
-- **Authentication/Authorization**: JWT, cookie auth, policy-based authorization.
+- **Authentication/Authorization**: JWT, cookie auth, policy-based authorization, `ConcurrencyStamp` vs `SecurityStamp`.
 - **Error handling**: exception middleware, `ProblemDetails`.
 - **Testing**: xUnit, Moq/NSubstitute, integration tests with `WebApplicationFactory` and Testcontainers.
 - **Clean architecture / DDD-lite**: separating Domain / Application / Infrastructure / API.
 - **REST vs RPC**, idempotency, optimistic concurrency.
 
-We don't need to cover all of this up front — call them out as they come up naturally in the code.
+Call these out as they come up naturally.
 
 ## Working agreement
 
 - This document is a **living spec**. Update it as decisions are made and features land.
-- Prefer small, end-to-end vertical slices (e.g., "list a book" working across db → API → UI) over building each layer in isolation.
-- Keep a short changelog at the bottom of this file when major decisions change.
+- Prefer small, end-to-end vertical slices.
+- Detailed state (what's shipped, what's pending, known issues) lives in the author's Claude memory under this project — `MEMORY.md` indexes them. CLAUDE.md is conventions + shape; memory is the punch list.
+- Short changelog at the bottom of this file when major decisions change.
 
 ## Open questions / to decide
 
-- Authentication approach (JWT with refresh tokens? cookie sessions? simple for v1?)
-- Whether to include an `Application` layer from day one or fold it into the API project
-- Frontend tooling: Vite vs Create React App (Vite is the modern default)
-- Test strategy: how much integration coverage with Testcontainers
-- Shipping/logistics model for sales — simulate or ignore for v1?
-- Late-return policy for rentals — fee calculation rules?
+- **Pre-ship blocker**: policy-based authorization. Admin endpoints currently use bare `[Authorize]` — any authenticated user can hit them. Needs `PermissionRequirement` + `[HasPermission("...")]` + `perm` claims in the JWT.
+- **ProblemDetails retrofit** on the server (pairs naturally with the pending Phase 6 global error handler).
+- **Default role on register** — new Buyers/Sellers currently land with zero roles/permissions. Auto-assign by UserType, or require admin to assign first?
+- **Pagination strategy** for `GET /api/users` and future large lists.
+- **Refresh tokens** — `RefreshTokens` table + `POST /api/auth/refresh`. Also enables password reset + email confirmation flows. Needed for the SecurityStamp-based session invalidation already wired into `SetRoles` to actually take effect.
+- **Clean-architecture split** (Domain/Application/Infrastructure projects) — still deferred; unblocks repository pattern.
+- **Test strategy** — xUnit + WebApplicationFactory + Testcontainers pencilled in; not yet started.
+- **Shipping/logistics model** for sales — simulate or ignore for v1.
+- **Late-return policy** for rentals — fee calculation rules.
 
 ## Changelog
 
+- **2026-04-23** — Client rewritten (feature-sliced React app) and admin panel shipped end-to-end: Users + Roles CRUD, role/direct-permission attachment, user create/delete. Server gained `POST /api/users` + `DELETE /api/users/{id}`. Stack finalized: Zustand + React Query + axios + shadcn/ui + Tailwind v4 + react-hook-form + zod + sonner.
+- **2026-04-22** — Phase 8B landed: Permissions catalog (code-defined `PermissionNames`), role+user permission entities, EF configs extracted to `Data/Configurations/`, `IdentitySeeder` rewritten (4-step idempotent), full admin endpoints for Roles and Users (attachment + concurrency). Review identified authz gap as the #1 pre-ship item.
 - **2026-04-20** — Project initialized. Stack chosen: React + .NET 10 + PostgreSQL + Docker. Mock payment system. Primary goal: .NET Core interview prep.
