@@ -197,7 +197,11 @@ public class UsersController(
                 }
             }
 
-            // Bump ConcurrencyStamp so the next concurrent request gets a 409.
+            // Bump SecurityStamp so the refresh-token flow can invalidate this
+            // user's session when their roles change. Currently inert — JWT bearer
+            // in Program.cs doesn't validate SecurityStamp. Phase TBD: refresh tokens.
+            // Side effect: Identity's UpdateAsync also bumps ConcurrencyStamp, which
+            // is what actually protects the next concurrent request.
             await userManager.UpdateSecurityStampAsync(user);
 
             await transaction.CommitAsync(ct);
