@@ -1,10 +1,10 @@
-using BookEcom.Api.Auth;
 using BookEcom.Domain.Entities;
+using BookEcom.Infrastructure.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
-namespace BookEcom.Api.Data;
+namespace BookEcom.Infrastructure.Data;
 
 public class AppDbContext(DbContextOptions<AppDbContext> options)
     : IdentityDbContext<AppUser, IdentityRole<int>, int>(options)

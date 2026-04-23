@@ -1,7 +1,7 @@
-using BookEcom.Api.Auth;
-using BookEcom.Api.Data;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
+using BookEcom.Infrastructure.Auth;
+using BookEcom.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

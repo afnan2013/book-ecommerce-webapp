@@ -1,4 +1,4 @@
-namespace BookEcom.Api.Auth.Jwt;
+namespace BookEcom.Infrastructure.Auth.Jwt;
 
 public class JwtOptions
 {

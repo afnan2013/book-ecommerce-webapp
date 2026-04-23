@@ -1,7 +1,7 @@
 using BookEcom.Domain.Auth;
 using Microsoft.AspNetCore.Identity;
 
-namespace BookEcom.Api.Auth;
+namespace BookEcom.Infrastructure.Auth;
 
 public class AppUser : IdentityUser<int>
 {

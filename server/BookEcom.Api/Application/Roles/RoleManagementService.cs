@@ -1,9 +1,9 @@
-using BookEcom.Api.Data;
 using BookEcom.Api.Dtos.Permissions;
 using BookEcom.Api.Dtos.Roles;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
+using BookEcom.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 

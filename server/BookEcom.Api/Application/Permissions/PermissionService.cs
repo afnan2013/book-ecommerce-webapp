@@ -1,5 +1,5 @@
-using BookEcom.Api.Data;
 using BookEcom.Api.Dtos.Permissions;
+using BookEcom.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Api.Application.Permissions;

@@ -2,7 +2,7 @@ using BookEcom.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace BookEcom.Api.Data.Configurations;
+namespace BookEcom.Infrastructure.Data.Configurations;
 
 public class PermissionConfiguration : IEntityTypeConfiguration<Permission>
 {

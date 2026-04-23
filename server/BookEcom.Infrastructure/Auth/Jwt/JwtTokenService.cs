@@ -1,10 +1,11 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using BookEcom.Infrastructure.Auth;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
-namespace BookEcom.Api.Auth.Jwt;
+namespace BookEcom.Infrastructure.Auth.Jwt;
 
 public interface IJwtTokenService
 {

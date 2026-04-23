@@ -1,10 +1,13 @@
-using BookEcom.Api.Auth;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Entities;
+using BookEcom.Infrastructure.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
-namespace BookEcom.Api.Data.Seed;
+namespace BookEcom.Infrastructure.Data.Seed;
 
 /// <summary>
 /// Runs once at app startup. Idempotent — safe to run on every boot.

@@ -3,7 +3,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-namespace BookEcom.Api.Migrations
+namespace BookEcom.Infrastructure.Migrations
 {
     /// <inheritdoc />
     public partial class InitialCreate : Migration

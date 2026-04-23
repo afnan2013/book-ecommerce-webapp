@@ -1,9 +1,9 @@
-using BookEcom.Api.Auth;
 using BookEcom.Domain.Entities;
+using BookEcom.Infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace BookEcom.Api.Data.Configurations;
+namespace BookEcom.Infrastructure.Data.Configurations;
 
 public class UserPermissionConfiguration : IEntityTypeConfiguration<UserPermission>
 {
@@ -15,9 +15,11 @@ public class UserPermissionConfiguration : IEntityTypeConfiguration<UserPermissi
         // UserPermission (Domain stays free of Identity dependencies), so
         // EF can't infer this relationship by convention — we configure it
         // here from Infrastructure, which can see Identity types.
+        // Pin the constraint name — see comment in RolePermissionConfiguration.
         builder.HasOne<AppUser>()
             .WithMany()
             .HasForeignKey(up => up.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .HasConstraintName("fk_user_permissions_users_user_id");
     }
 }

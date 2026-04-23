@@ -1,7 +1,7 @@
-using BookEcom.Api.Data;
 using BookEcom.Api.Dtos.Books;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
+using BookEcom.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Api.Application.Books;
