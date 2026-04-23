@@ -68,8 +68,7 @@ export function useDeleteRole() {
 export function useSetRolePermissions(id: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (req: SetRolePermissionsRequest) =>
-      setRolePermissions(id, req),
+    mutationFn: (req: SetRolePermissionsRequest) => setRolePermissions(id, req),
     onSuccess: (role) => {
       queryClient.setQueryData(queryKeys.roles.byId(id), role);
       queryClient.invalidateQueries({ queryKey: queryKeys.roles.list() });
