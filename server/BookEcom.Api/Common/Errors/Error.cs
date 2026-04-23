@@ -6,6 +6,7 @@ public enum ErrorCode
     Conflict,
     Validation,
     Forbidden,
+    Unauthorized,
     Unexpected,
 }
 

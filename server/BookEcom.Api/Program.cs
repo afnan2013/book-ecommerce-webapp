@@ -1,4 +1,6 @@
 using System.Text;
+using BookEcom.Api.Application.Auth;
+using BookEcom.Api.Application.Books;
 using BookEcom.Api.Auth;
 using BookEcom.Api.Auth.Jwt;
 using BookEcom.Api.Data;
@@ -32,6 +34,13 @@ builder.Services
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("Jwt"));
 builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+// Application services — Scoped so they share the request-scoped DbContext /
+// UserManager / SignInManager. Transient here would be a captive-dependency
+// bug: a transient service that injects a scoped DbContext accidentally
+// extends the DbContext's lifetime.
+builder.Services.AddScoped<IBookService, BookService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var signingKey = jwtSection["SigningKey"]

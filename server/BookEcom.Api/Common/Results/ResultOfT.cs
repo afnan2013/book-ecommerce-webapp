@@ -34,6 +34,9 @@ public sealed class Result<T> : Result
     public new static Result<T> Forbidden(string message) =>
         new(new Error(ErrorCode.Forbidden, message));
 
+    public new static Result<T> Unauthorized(string message) =>
+        new(new Error(ErrorCode.Unauthorized, message));
+
     public new static Result<T> Unexpected(string message) =>
         new(new Error(ErrorCode.Unexpected, message));
 

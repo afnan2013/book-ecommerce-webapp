@@ -39,6 +39,9 @@ public class Result
     public static Result Forbidden(string message) =>
         Failure(new Error(ErrorCode.Forbidden, message));
 
+    public static Result Unauthorized(string message) =>
+        Failure(new Error(ErrorCode.Unauthorized, message));
+
     public static Result Unexpected(string message) =>
         Failure(new Error(ErrorCode.Unexpected, message));
 
