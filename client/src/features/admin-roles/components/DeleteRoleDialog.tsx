@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import { useDeleteRole } from '../hooks';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import type { Role } from '@/lib/types/role';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,7 +28,7 @@ export function DeleteRoleDialog({ role, onClose }: Props) {
         onClose();
       },
       onError: (err) => {
-        toast.error(isApiProblem(err) ? err.title : 'Failed to delete role.');
+        toast.error(describeApiError(err, 'Failed to delete role.', 'role'));
       },
     });
   };

@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { useUpdateUserRoles } from '../hooks';
-import { handleMutationError } from '@/lib/handleMutationError';
-import { queryKeys } from '@/lib/queryKeys';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import type { Role } from '@/lib/types/role';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -34,7 +32,6 @@ export function UserRolesSection({
   const initialSet = useMemo(() => new Set(initialRoleIds), [initialRoleIds]);
   const [selected, setSelected] = useState<Set<number>>(() => initialSet);
   const mutation = useUpdateUserRoles(userId);
-  const queryClient = useQueryClient();
 
   const hasChanges = useMemo(() => {
     if (selected.size !== initialSet.size) return true;
@@ -57,11 +54,7 @@ export function UserRolesSection({
       {
         onSuccess: () => toast.success('Roles updated.'),
         onError: (err) =>
-          handleMutationError(err, {
-            queryClient,
-            invalidateKey: queryKeys.users.byId(userId),
-            entityLabel: 'user',
-          }),
+          toast.error(describeApiError(err, 'Failed to update roles.', 'user')),
       },
     );
   };

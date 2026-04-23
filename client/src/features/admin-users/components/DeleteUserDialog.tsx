@@ -1,7 +1,7 @@
 import type { FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useDeleteUser } from '../hooks';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import type { UserDetail } from '@/lib/types/user';
 import { Button } from '@/components/ui/button';
 import {
@@ -30,7 +30,7 @@ export function DeleteUserDialog({ user, onClose }: Props) {
         onClose();
       },
       onError: (err) => {
-        toast.error(isApiProblem(err) ? err.title : 'Failed to delete user.');
+        toast.error(describeApiError(err, 'Failed to delete user.', 'user'));
       },
     });
   };

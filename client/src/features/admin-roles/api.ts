@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/api/client';
 import type { Role } from '@/lib/types/role';
 
 export async function listRoles(): Promise<Role[]> {

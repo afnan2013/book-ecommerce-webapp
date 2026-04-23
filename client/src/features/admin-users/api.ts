@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/api/client';
 import type { UserDetail, UserType } from '@/lib/types/user';
 
 export async function listUsers(): Promise<UserDetail[]> {

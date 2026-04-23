@@ -1,4 +1,4 @@
-import { apiClient } from '@/lib/apiClient';
+import { apiClient } from '@/lib/api/client';
 import type { Permission } from '@/lib/types/permission';
 
 export async function listPermissions(): Promise<Permission[]> {

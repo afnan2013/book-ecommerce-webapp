@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { loginSchema, type LoginInput } from '../schemas';
 import { useLogin } from '../hooks';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/authStore';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -35,7 +35,7 @@ export function LoginPage() {
   const onSubmit = (values: LoginInput) => {
     loginMutation.mutate(values, {
       onError: (err) => {
-        toast.error(isApiProblem(err) ? err.title : 'Login failed');
+        toast.error(describeApiError(err, 'Login failed'));
       },
     });
   };

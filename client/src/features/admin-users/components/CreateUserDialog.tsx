@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useCreateUser } from '../hooks';
 import { createUserSchema, type CreateUserInput } from '../schemas';
 import { UserType } from '@/lib/types/user';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/FormField';
@@ -50,7 +50,7 @@ export function CreateUserDialog({ open, onOpenChange }: Props) {
         onOpenChange(false);
       },
       onError: (err) => {
-        toast.error(isApiProblem(err) ? err.title : 'Failed to create user.');
+        toast.error(describeApiError(err, 'Failed to create user.', 'user'));
       },
     });
   };

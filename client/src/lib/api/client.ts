@@ -1,6 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import { useAuthStore } from '@/stores/authStore';
-import { ApiProblem, type ProblemDetails } from '@/lib/types/problem';
+import { ApiError, type ApiErrorDetails } from './ApiError';
 
 export const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -17,14 +17,14 @@ apiClient.interceptors.request.use((config) => {
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<ProblemDetails>) => {
+  (error: AxiosError<ApiErrorDetails>) => {
     if (error.response?.status === 401) {
       useAuthStore.getState().clear();
     }
     const status = error.response?.status;
     const data = error.response?.data;
     if (status && data && typeof data === 'object') {
-      return Promise.reject(new ApiProblem(status, data));
+      return Promise.reject(new ApiError(status, data));
     }
     return Promise.reject(error);
   },

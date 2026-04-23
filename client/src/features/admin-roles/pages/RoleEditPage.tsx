@@ -3,7 +3,7 @@ import { useRole } from '../hooks';
 import { RoleRenameSection } from '../components/RoleRenameSection';
 import { RolePermissionsSection } from '../components/RolePermissionsSection';
 import { usePermissions } from '@/features/permissions/hooks';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import { Button } from '@/components/ui/button';
 import { NotFoundState } from '@/components/NotFoundState';
 
@@ -34,7 +34,7 @@ export function RoleEditPage() {
       {roleQuery.isError && (
         <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
           <p className="text-sm text-destructive">
-            {isApiProblem(roleQuery.error) ? roleQuery.error.title : 'Failed to load role.'}
+            {describeApiError(roleQuery.error, 'Failed to load role.')}
           </p>
         </div>
       )}

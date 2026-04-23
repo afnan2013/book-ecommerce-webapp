@@ -11,6 +11,7 @@ import {
   type UpdateUserRolesRequest,
 } from './api';
 import { queryKeys } from '@/lib/queryKeys';
+import { ApiError } from '@/lib/api/ApiError';
 
 export function useUsers() {
   return useQuery({
@@ -55,6 +56,11 @@ export function useUpdateUserRoles(id: number) {
       queryClient.setQueryData(queryKeys.users.byId(id), user);
       queryClient.invalidateQueries({ queryKey: queryKeys.users.list() });
     },
+    onError: (err) => {
+      if (err instanceof ApiError && err.kind === 'conflict') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.byId(id) });
+      }
+    },
   });
 }
 
@@ -66,6 +72,11 @@ export function useUpdateUserPermissions(id: number) {
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.users.byId(id), user);
       queryClient.invalidateQueries({ queryKey: queryKeys.users.list() });
+    },
+    onError: (err) => {
+      if (err instanceof ApiError && err.kind === 'conflict') {
+        queryClient.invalidateQueries({ queryKey: queryKeys.users.byId(id) });
+      }
     },
   });
 }

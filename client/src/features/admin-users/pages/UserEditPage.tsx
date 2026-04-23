@@ -4,7 +4,7 @@ import { UserRolesSection } from '../components/UserRolesSection';
 import { UserDirectPermissionsSection } from '../components/UserDirectPermissionsSection';
 import { useRoles } from '@/features/admin-roles/hooks';
 import { usePermissions } from '@/features/permissions/hooks';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import { UserTypeLabel } from '@/lib/types/user';
 import { Button } from '@/components/ui/button';
 import { NotFoundState } from '@/components/NotFoundState';
@@ -43,7 +43,7 @@ export function UserEditPage() {
       {userQuery.isError && (
         <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
           <p className="text-sm text-destructive">
-            {isApiProblem(userQuery.error) ? userQuery.error.title : 'Failed to load user.'}
+            {describeApiError(userQuery.error, 'Failed to load user.')}
           </p>
         </div>
       )}

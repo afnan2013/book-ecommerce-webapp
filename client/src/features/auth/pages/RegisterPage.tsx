@@ -6,7 +6,7 @@ import { registerSchema, type RegisterInput } from '../schemas';
 import { useRegister } from '../hooks';
 import { selectIsAuthenticated, useAuthStore } from '@/stores/authStore';
 import { UserType } from '@/lib/types/user';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { FormField } from '@/components/FormField';
@@ -42,7 +42,7 @@ export function RegisterPage() {
   const onSubmit = (values: RegisterInput) => {
     registerMutation.mutate(values, {
       onError: (err) => {
-        toast.error(isApiProblem(err) ? err.title : 'Registration failed');
+        toast.error(describeApiError(err, 'Registration failed'));
       },
     });
   };

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { useCreateRole } from '../hooks';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,7 +37,7 @@ export function CreateRoleDialog({ open, onOpenChange }: Props) {
           onOpenChange(false);
         },
         onError: (err) => {
-          toast.error(isApiProblem(err) ? err.title : 'Failed to create role.');
+          toast.error(describeApiError(err, 'Failed to create role.', 'role'));
         },
       },
     );

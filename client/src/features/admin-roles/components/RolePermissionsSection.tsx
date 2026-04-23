@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { useSetRolePermissions } from '../hooks';
-import { handleMutationError } from '@/lib/handleMutationError';
-import { queryKeys } from '@/lib/queryKeys';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import type { Permission } from '@/lib/types/permission';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -31,7 +29,6 @@ export function RolePermissionsSection({
   );
   const [selected, setSelected] = useState<Set<number>>(() => initialSet);
   const setPermsMutation = useSetRolePermissions(roleId);
-  const queryClient = useQueryClient();
 
   const hasChanges = useMemo(() => {
     if (selected.size !== initialSet.size) return true;
@@ -57,11 +54,9 @@ export function RolePermissionsSection({
       {
         onSuccess: () => toast.success('Permissions updated.'),
         onError: (err) =>
-          handleMutationError(err, {
-            queryClient,
-            invalidateKey: queryKeys.roles.byId(roleId),
-            entityLabel: 'role',
-          }),
+          toast.error(
+            describeApiError(err, 'Failed to update permissions.', 'role'),
+          ),
       },
     );
   };

@@ -4,7 +4,7 @@ import { CreateUserDialog } from '../components/CreateUserDialog';
 import { DeleteUserDialog } from '../components/DeleteUserDialog';
 import { UsersTable } from '../components/UsersTable';
 import { useAuthStore } from '@/stores/authStore';
-import { isApiProblem } from '@/lib/types/problem';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import type { UserDetail } from '@/lib/types/user';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +50,7 @@ export function UsersListPage() {
       {isError && (
         <div className="rounded-md border border-destructive/50 bg-destructive/5 p-4">
           <p className="text-sm text-destructive">
-            {isApiProblem(error) ? error.title : 'Failed to load users.'}
+            {describeApiError(error, 'Failed to load users.')}
           </p>
           <Button
             variant="outline"

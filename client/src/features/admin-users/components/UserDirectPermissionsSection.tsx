@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { useUpdateUserPermissions } from '../hooks';
-import { handleMutationError } from '@/lib/handleMutationError';
-import { queryKeys } from '@/lib/queryKeys';
+import { describeApiError } from '@/lib/errors/describeApiError';
 import type { Permission } from '@/lib/types/permission';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -37,7 +35,6 @@ export function UserDirectPermissionsSection({
   );
   const [selected, setSelected] = useState<Set<number>>(() => initialSet);
   const mutation = useUpdateUserPermissions(userId);
-  const queryClient = useQueryClient();
 
   const hasChanges = useMemo(() => {
     if (selected.size !== initialSet.size) return true;
@@ -60,11 +57,9 @@ export function UserDirectPermissionsSection({
       {
         onSuccess: () => toast.success('Direct permissions updated.'),
         onError: (err) =>
-          handleMutationError(err, {
-            queryClient,
-            invalidateKey: queryKeys.users.byId(userId),
-            entityLabel: 'user',
-          }),
+          toast.error(
+            describeApiError(err, 'Failed to update permissions.', 'user'),
+          ),
       },
     );
   };
