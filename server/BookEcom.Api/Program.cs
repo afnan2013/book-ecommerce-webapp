@@ -1,10 +1,10 @@
 using System.Text;
-using BookEcom.Api.Application.Auth;
-using BookEcom.Api.Application.Books;
-using BookEcom.Api.Application.Permissions;
-using BookEcom.Api.Application.Roles;
-using BookEcom.Api.Application.Users;
-using BookEcom.Api.Application.Users.Policies;
+using BookEcom.Application.Auth;
+using BookEcom.Application.Books;
+using BookEcom.Application.Permissions;
+using BookEcom.Application.Roles;
+using BookEcom.Application.Users;
+using BookEcom.Application.Users.Policies;
 using BookEcom.Infrastructure.Auth;
 using BookEcom.Infrastructure.Auth.Jwt;
 using BookEcom.Infrastructure.Data;

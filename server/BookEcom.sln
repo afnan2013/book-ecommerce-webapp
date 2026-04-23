@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookEcom.Domain", "BookEcom
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookEcom.Infrastructure", "BookEcom.Infrastructure\BookEcom.Infrastructure.csproj", "{7B29000A-0B66-4E45-B276-7520DE99683F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookEcom.Application", "BookEcom.Application\BookEcom.Application.csproj", "{E3D0DE58-BC4D-464A-866B-4566244B9622}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{7B29000A-0B66-4E45-B276-7520DE99683F}.Release|x64.Build.0 = Release|Any CPU
 		{7B29000A-0B66-4E45-B276-7520DE99683F}.Release|x86.ActiveCfg = Release|Any CPU
 		{7B29000A-0B66-4E45-B276-7520DE99683F}.Release|x86.Build.0 = Release|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Debug|x64.Build.0 = Debug|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Debug|x86.Build.0 = Debug|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Release|x64.ActiveCfg = Release|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Release|x64.Build.0 = Release|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Release|x86.ActiveCfg = Release|Any CPU
+		{E3D0DE58-BC4D-464A-866B-4566244B9622}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

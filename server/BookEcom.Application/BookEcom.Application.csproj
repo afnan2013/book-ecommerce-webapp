@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Class libraries don't get Microsoft.Extensions.Logging via ImplicitUsings
+         the way the Web SDK does. Promote it to a global using so services
+         don't each need to import it explicitly. -->
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Services call UserManager<T>, SignInManager<T>, etc. — Identity types
+         need the shared framework. Also exposes Microsoft.Extensions.* bits. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BookEcom.Domain\BookEcom.Domain.csproj" />
+    <!-- Pragmatic compromise: Application depends on Infrastructure for
+         AppDbContext, AppUser, and IJwtTokenService. Strict clean-arch would
+         invert this (repository interfaces owned by Application, implemented
+         by Infrastructure) — deferred to Phase 5. -->
+    <ProjectReference Include="..\BookEcom.Infrastructure\BookEcom.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

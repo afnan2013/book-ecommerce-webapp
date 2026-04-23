@@ -1,5 +1,5 @@
-using BookEcom.Api.Application.Permissions;
-using BookEcom.Api.Dtos.Permissions;
+using BookEcom.Application.Permissions;
+using BookEcom.Application.Dtos.Permissions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

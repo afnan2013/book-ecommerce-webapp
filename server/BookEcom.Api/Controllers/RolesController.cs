@@ -1,6 +1,6 @@
-using BookEcom.Api.Application.Roles;
+using BookEcom.Application.Roles;
 using BookEcom.Domain.Common.Results;
-using BookEcom.Api.Dtos.Roles;
+using BookEcom.Application.Dtos.Roles;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

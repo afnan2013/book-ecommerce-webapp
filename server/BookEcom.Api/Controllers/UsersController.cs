@@ -1,8 +1,8 @@
 using System.Security.Claims;
-using BookEcom.Api.Application.Users;
+using BookEcom.Application.Users;
 using BookEcom.Domain.Common.Results;
-using BookEcom.Api.Dtos.Auth;
-using BookEcom.Api.Dtos.Users;
+using BookEcom.Application.Dtos.Auth;
+using BookEcom.Application.Dtos.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

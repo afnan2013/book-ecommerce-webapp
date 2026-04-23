@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BookEcom.Application\BookEcom.Application.csproj" />
     <ProjectReference Include="..\BookEcom.Domain\BookEcom.Domain.csproj" />
     <ProjectReference Include="..\BookEcom.Infrastructure\BookEcom.Infrastructure.csproj" />
   </ItemGroup>
