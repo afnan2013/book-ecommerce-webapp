@@ -1,6 +1,10 @@
 using System.Text;
 using BookEcom.Api.Application.Auth;
 using BookEcom.Api.Application.Books;
+using BookEcom.Api.Application.Permissions;
+using BookEcom.Api.Application.Roles;
+using BookEcom.Api.Application.Users;
+using BookEcom.Api.Application.Users.Policies;
 using BookEcom.Api.Auth;
 using BookEcom.Api.Auth.Jwt;
 using BookEcom.Api.Data;
@@ -41,6 +45,13 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 // extends the DbContext's lifetime.
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<IRoleManagementService, RoleManagementService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
+
+// User-aggregate helpers — Scoped because they consume scoped EF and Identity.
+builder.Services.AddScoped<LastSuperAdminPolicy>();
+builder.Services.AddScoped<UserResponseProjector>();
 
 var jwtSection = builder.Configuration.GetSection("Jwt");
 var signingKey = jwtSection["SigningKey"]
