@@ -78,7 +78,7 @@ public class UsersController(
 
         // Protect: cannot delete the last SuperAdmin.
         var userRoles = await userManager.GetRolesAsync(user);
-        if (userRoles.Contains(RoleNames.SuperAdmin, StringComparer.OrdinalIgnoreCase))
+        if (userRoles.Any(RoleNames.IsSuperAdmin))
         {
             var superAdminRole = await roleManager.FindByNameAsync(RoleNames.SuperAdmin);
             if (superAdminRole is not null)
@@ -237,9 +237,8 @@ public class UsersController(
 
         // Protect: cannot remove SuperAdmin role from the last SuperAdmin.
         var currentRoles = await userManager.GetRolesAsync(user);
-        var isSuperAdmin = currentRoles.Contains(RoleNames.SuperAdmin, StringComparer.OrdinalIgnoreCase);
-        var keepsSuperAdmin = requestedRoles.Any(r =>
-            string.Equals(r.NormalizedName, RoleNames.SuperAdmin.ToUpperInvariant(), StringComparison.Ordinal));
+        var isSuperAdmin = currentRoles.Any(RoleNames.IsSuperAdmin);
+        var keepsSuperAdmin = requestedRoles.Any(r => RoleNames.IsSuperAdmin(r.NormalizedName));
 
         if (isSuperAdmin && !keepsSuperAdmin)
         {

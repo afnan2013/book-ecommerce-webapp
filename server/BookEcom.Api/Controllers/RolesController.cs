@@ -108,7 +108,7 @@ public class RolesController(
         var role = await roleManager.FindByIdAsync(id.ToString());
         if (role is null) return NotFound();
 
-        if (role.NormalizedName == RoleNames.SuperAdmin.ToUpperInvariant())
+        if (RoleNames.IsSuperAdmin(role.NormalizedName))
         {
             return BadRequest(new { error = "SuperAdmin role cannot be modified." });
         }
@@ -132,7 +132,7 @@ public class RolesController(
         var role = await roleManager.FindByIdAsync(id.ToString());
         if (role is null) return NotFound();
 
-        if (role.NormalizedName == RoleNames.SuperAdmin.ToUpperInvariant())
+        if (RoleNames.IsSuperAdmin(role.NormalizedName))
         {
             return BadRequest(new { error = "SuperAdmin role cannot be deleted." });
         }
@@ -159,7 +159,7 @@ public class RolesController(
         var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
         if (role is null) return NotFound();
 
-        if (role.NormalizedName == RoleNames.SuperAdmin.ToUpperInvariant())
+        if (RoleNames.IsSuperAdmin(role.NormalizedName))
         {
             return BadRequest(new { error = "SuperAdmin permissions are managed automatically and cannot be modified." });
         }

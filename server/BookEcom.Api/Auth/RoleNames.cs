@@ -16,4 +16,20 @@ public static class RoleNames
     /// permission and lock everyone out.
     /// </summary>
     public const string SuperAdmin = "SuperAdmin";
+
+    /// <summary>
+    /// Identity-normalized form of <see cref="SuperAdmin"/>. ASP.NET Identity
+    /// upper-cases role names for lookup — use this when querying
+    /// <c>AspNetRoles.NormalizedName</c> directly on the DbSet.
+    /// </summary>
+    public const string SuperAdminNormalized = "SUPERADMIN";
+
+    /// <summary>
+    /// Canonical SuperAdmin check. Ordinal case-insensitive so it matches both
+    /// the display form ("SuperAdmin") and the Identity-normalized form
+    /// ("SUPERADMIN"). The one place this comparison lives — everything else
+    /// calls through here.
+    /// </summary>
+    public static bool IsSuperAdmin(string? name) =>
+        string.Equals(name, SuperAdmin, StringComparison.OrdinalIgnoreCase);
 }
