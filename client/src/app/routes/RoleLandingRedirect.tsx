@@ -7,7 +7,7 @@ export function RoleLandingRedirect() {
   if (!user) return <Navigate to="/login" replace />;
   switch (user.userType) {
     case UserType.Admin:
-      return <Navigate to="/admin/users" replace />;
+      return <Navigate to="/admin" replace />;
     case UserType.Buyer:
       return <Navigate to="/buyer" replace />;
     case UserType.Seller:
