@@ -1,4 +1,4 @@
-namespace BookEcom.Api.Auth;
+namespace BookEcom.Domain.Auth;
 
 public enum UserType
 {

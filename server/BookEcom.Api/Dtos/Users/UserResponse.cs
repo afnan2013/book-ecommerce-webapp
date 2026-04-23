@@ -1,5 +1,5 @@
-using BookEcom.Api.Auth;
 using BookEcom.Api.Dtos.Permissions;
+using BookEcom.Domain.Auth;
 
 namespace BookEcom.Api.Dtos.Users;
 

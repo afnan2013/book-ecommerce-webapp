@@ -1,6 +1,6 @@
-using BookEcom.Api.Common.Results;
 using BookEcom.Api.Dtos.Auth;
 using BookEcom.Api.Dtos.Users;
+using BookEcom.Domain.Common.Results;
 
 namespace BookEcom.Api.Application.Users;
 

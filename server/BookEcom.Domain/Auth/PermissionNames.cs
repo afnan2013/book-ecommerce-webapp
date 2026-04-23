@@ -1,4 +1,4 @@
-namespace BookEcom.Api.Auth;
+namespace BookEcom.Domain.Auth;
 
 /// <summary>
 /// Canonical names for every permission in the system. Use these constants

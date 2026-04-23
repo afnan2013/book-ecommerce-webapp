@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using BookEcom.Api.Auth;
+using BookEcom.Domain.Auth;
 
 namespace BookEcom.Api.Dtos.Users;
 

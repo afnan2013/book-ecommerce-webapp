@@ -1,6 +1,6 @@
-using BookEcom.Api.Common.Errors;
+using BookEcom.Domain.Common.Errors;
 
-namespace BookEcom.Api.Common.Results;
+namespace BookEcom.Domain.Common.Results;
 
 /// <summary>
 /// Outcome of an operation that does not produce a value. Expected failures

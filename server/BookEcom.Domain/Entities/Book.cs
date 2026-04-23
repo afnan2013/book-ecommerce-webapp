@@ -1,6 +1,6 @@
-using BookEcom.Api.Common.Results;
+using BookEcom.Domain.Common.Results;
 
-namespace BookEcom.Api.Entities;
+namespace BookEcom.Domain.Entities;
 
 /// <summary>
 /// Book aggregate. Setters are private so the invariants enforced by

@@ -1,4 +1,4 @@
-namespace BookEcom.Api.Auth;
+namespace BookEcom.Domain.Auth;
 
 /// <summary>
 /// Code-referenced role names. Roles are normally managed through the admin

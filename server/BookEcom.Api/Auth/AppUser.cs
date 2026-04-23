@@ -1,3 +1,4 @@
+using BookEcom.Domain.Auth;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookEcom.Api.Auth;

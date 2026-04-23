@@ -1,5 +1,5 @@
 using BookEcom.Api.Application.Auth;
-using BookEcom.Api.Common.Results;
+using BookEcom.Domain.Common.Results;
 using BookEcom.Api.Dtos.Auth;
 using Microsoft.AspNetCore.Mvc;
 

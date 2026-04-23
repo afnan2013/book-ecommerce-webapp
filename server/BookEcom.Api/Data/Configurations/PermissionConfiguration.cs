@@ -1,4 +1,4 @@
-using BookEcom.Api.Entities;
+using BookEcom.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

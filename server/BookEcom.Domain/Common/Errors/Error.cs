@@ -1,4 +1,4 @@
-namespace BookEcom.Api.Common.Errors;
+namespace BookEcom.Domain.Common.Errors;
 
 public enum ErrorCode
 {

@@ -1,7 +1,7 @@
-using BookEcom.Api.Common.Errors;
+using BookEcom.Domain.Common.Errors;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BookEcom.Api.Common.Results;
+namespace BookEcom.Domain.Common.Results;
 
 /// <summary>
 /// Translates domain <see cref="Result"/> / <see cref="Result{T}"/> outcomes

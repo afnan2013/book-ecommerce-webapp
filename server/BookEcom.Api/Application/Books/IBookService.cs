@@ -1,5 +1,5 @@
-using BookEcom.Api.Common.Results;
 using BookEcom.Api.Dtos.Books;
+using BookEcom.Domain.Common.Results;
 
 namespace BookEcom.Api.Application.Books;
 
