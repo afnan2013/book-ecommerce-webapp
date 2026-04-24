@@ -121,7 +121,7 @@ namespace BookEcom.Infrastructure.Migrations
                     b.ToTable("user_permissions", (string)null);
                 });
 
-            modelBuilder.Entity("BookEcom.Infrastructure.Auth.AppUser", b =>
+            modelBuilder.Entity("BookEcom.Application.Auth.AppUser", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -405,7 +405,7 @@ namespace BookEcom.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_user_permissions_permissions_permission_id");
 
-                    b.HasOne("BookEcom.Infrastructure.Auth.AppUser", null)
+                    b.HasOne("BookEcom.Application.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -427,7 +427,7 @@ namespace BookEcom.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserClaim<int>", b =>
                 {
-                    b.HasOne("BookEcom.Infrastructure.Auth.AppUser", null)
+                    b.HasOne("BookEcom.Application.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -437,7 +437,7 @@ namespace BookEcom.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserLogin<int>", b =>
                 {
-                    b.HasOne("BookEcom.Infrastructure.Auth.AppUser", null)
+                    b.HasOne("BookEcom.Application.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -454,7 +454,7 @@ namespace BookEcom.Infrastructure.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_asp_net_user_roles_asp_net_roles_role_id");
 
-                    b.HasOne("BookEcom.Infrastructure.Auth.AppUser", null)
+                    b.HasOne("BookEcom.Application.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -464,7 +464,7 @@ namespace BookEcom.Infrastructure.Migrations
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityUserToken<int>", b =>
                 {
-                    b.HasOne("BookEcom.Infrastructure.Auth.AppUser", null)
+                    b.HasOne("BookEcom.Application.Auth.AppUser", null)
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)

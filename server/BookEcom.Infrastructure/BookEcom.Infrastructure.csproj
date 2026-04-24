@@ -25,6 +25,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Phase 5b: arrow flipped. Infrastructure now implements abstractions
+         owned by Application (IJwtTokenService) and uses Application's
+         AppUser entity. The dependency now points inward toward stability,
+         per Robert Martin's Stable-Dependencies Principle. -->
+    <ProjectReference Include="..\BookEcom.Application\BookEcom.Application.csproj" />
     <ProjectReference Include="..\BookEcom.Domain\BookEcom.Domain.csproj" />
   </ItemGroup>
 

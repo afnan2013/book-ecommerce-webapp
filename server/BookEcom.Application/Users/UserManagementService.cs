@@ -4,9 +4,8 @@ using BookEcom.Application.Users.Policies;
 using BookEcom.Domain.Abstractions;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
-using BookEcom.Infrastructure.Auth;
+using BookEcom.Application.Auth;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Application.Users;
 
@@ -136,45 +135,41 @@ public class UserManagementService(
         // Update calls (RemoveFromRolesAsync, AddToRolesAsync,
         // UpdateSecurityStampAsync) all SaveChanges internally — they
         // participate in this transaction because they share the
-        // request-scoped DbContext.
+        // request-scoped DbContext. Identity's UserStore.UpdateAsync catches
+        // DbUpdateConcurrencyException internally and surfaces it as an
+        // IdentityResult.ConcurrencyFailure, which will hit the
+        // !Succeeded branches below — we don't need an EF-typed catch here
+        // (and Application can't see EF types after the phase 5b flip).
         await using var transaction = await uow.BeginTransactionAsync(ct);
-        try
+
+        var removeResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
+        if (!removeResult.Succeeded)
         {
-            var removeResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
-            if (!removeResult.Succeeded)
+            await transaction.RollbackAsync(ct);
+            return Result<UserResponse>.Validation(
+                "Could not update roles.",
+                removeResult.Errors.Select(e => e.Description).ToList());
+        }
+
+        var newRoleNames = requestedRoles.Select(r => r.Name).ToList();
+        if (newRoleNames.Count > 0)
+        {
+            var addResult = await userManager.AddToRolesAsync(user, newRoleNames);
+            if (!addResult.Succeeded)
             {
                 await transaction.RollbackAsync(ct);
                 return Result<UserResponse>.Validation(
                     "Could not update roles.",
-                    removeResult.Errors.Select(e => e.Description).ToList());
+                    addResult.Errors.Select(e => e.Description).ToList());
             }
-
-            var newRoleNames = requestedRoles.Select(r => r.Name).ToList();
-            if (newRoleNames.Count > 0)
-            {
-                var addResult = await userManager.AddToRolesAsync(user, newRoleNames);
-                if (!addResult.Succeeded)
-                {
-                    await transaction.RollbackAsync(ct);
-                    return Result<UserResponse>.Validation(
-                        "Could not update roles.",
-                        addResult.Errors.Select(e => e.Description).ToList());
-                }
-            }
-
-            // Bump SecurityStamp so a future refresh-token flow can invalidate
-            // this user's sessions on role change. Currently inert — JWT bearer
-            // does not validate SecurityStamp. Side effect: Identity.UpdateAsync
-            // also bumps ConcurrencyStamp, which is what protects the next write.
-            await userManager.UpdateSecurityStampAsync(user);
-            await transaction.CommitAsync(ct);
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            await transaction.RollbackAsync(ct);
-            return Result<UserResponse>.Conflict(
-                "This user was modified by someone else. Please refresh and try again.");
-        }
+
+        // Bump SecurityStamp so a future refresh-token flow can invalidate
+        // this user's sessions on role change. Currently inert — JWT bearer
+        // does not validate SecurityStamp. Side effect: Identity.UpdateAsync
+        // also bumps ConcurrencyStamp, which is what protects the next write.
+        await userManager.UpdateSecurityStampAsync(user);
+        await transaction.CommitAsync(ct);
 
         logger.LogInformation(
             "Users.SetRoles — set {Count} roles on {Email}",

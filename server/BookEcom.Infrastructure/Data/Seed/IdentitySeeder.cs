@@ -1,6 +1,6 @@
+using BookEcom.Application.Auth;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Entities;
-using BookEcom.Infrastructure.Auth;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

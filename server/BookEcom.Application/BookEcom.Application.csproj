@@ -20,12 +20,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Application depends only on Domain. Phase 5a moved AppDbContext
+         behind IRepository / IUnitOfWork abstractions in Domain; Phase 5b
+         relocated AppUser / IJwtTokenService / JwtOptions into Application
+         and flipped the project arrow so Infrastructure now references
+         Application. Application is no longer coupled to any Infrastructure
+         implementation type. -->
     <ProjectReference Include="..\BookEcom.Domain\BookEcom.Domain.csproj" />
-    <!-- Pragmatic compromise: Application depends on Infrastructure for
-         AppDbContext, AppUser, and IJwtTokenService. Strict clean-arch would
-         invert this (repository interfaces owned by Application, implemented
-         by Infrastructure) — deferred to Phase 5. -->
-    <ProjectReference Include="..\BookEcom.Infrastructure\BookEcom.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

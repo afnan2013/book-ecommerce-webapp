@@ -1,5 +1,5 @@
+using BookEcom.Application.Auth;
 using BookEcom.Domain.Entities;
-using BookEcom.Infrastructure.Auth;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

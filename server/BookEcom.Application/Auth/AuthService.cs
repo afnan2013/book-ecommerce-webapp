@@ -1,8 +1,7 @@
 using BookEcom.Application.Dtos.Auth;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
-using BookEcom.Infrastructure.Auth;
-using BookEcom.Infrastructure.Auth.Jwt;
+using BookEcom.Application.Auth.Jwt;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookEcom.Application.Auth;

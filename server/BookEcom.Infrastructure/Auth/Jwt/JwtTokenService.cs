@@ -1,16 +1,12 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using BookEcom.Infrastructure.Auth;
+using BookEcom.Application.Auth;
+using BookEcom.Application.Auth.Jwt;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace BookEcom.Infrastructure.Auth.Jwt;
-
-public interface IJwtTokenService
-{
-    (string token, DateTime expiresAt) CreateAccessToken(AppUser user);
-}
 
 public class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenService
 {

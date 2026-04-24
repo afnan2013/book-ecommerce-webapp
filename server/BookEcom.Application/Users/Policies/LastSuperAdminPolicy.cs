@@ -1,7 +1,7 @@
 using BookEcom.Domain.Abstractions;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
-using BookEcom.Infrastructure.Auth;
+using BookEcom.Application.Auth;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookEcom.Application.Users.Policies;
