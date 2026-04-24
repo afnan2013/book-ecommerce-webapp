@@ -1,5 +1,6 @@
 using System.Text;
 using BookEcom.Application.Auth;
+using BookEcom.Domain.Abstractions;
 using BookEcom.Application.Books;
 using BookEcom.Application.Permissions;
 using BookEcom.Application.Roles;
@@ -43,6 +44,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 // UserManager / SignInManager. Transient here would be a captive-dependency
 // bug: a transient service that injects a scoped DbContext accidentally
 // extends the DbContext's lifetime.
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
