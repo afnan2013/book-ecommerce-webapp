@@ -16,6 +16,12 @@ public interface IRoleRepository
 
     Task<RoleSummary?> GetByIdAsync(int id, CancellationToken ct);
 
+    /// <summary>
+    /// Bulk fetch of roles by id. Used by user-role assignment flows that
+    /// need to validate caller-supplied role ids exist before mutating.
+    /// </summary>
+    Task<IReadOnlyList<RoleSummary>> GetByIdsAsync(IEnumerable<int> ids, CancellationToken ct);
+
     Task<IReadOnlyList<Permission>> GetPermissionsForRoleAsync(int roleId, CancellationToken ct);
 
     /// <summary>

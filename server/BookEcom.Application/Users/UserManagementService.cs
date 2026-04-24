@@ -1,10 +1,10 @@
-using BookEcom.Application.Users.Policies;
 using BookEcom.Application.Dtos.Auth;
 using BookEcom.Application.Dtos.Users;
+using BookEcom.Application.Users.Policies;
+using BookEcom.Domain.Abstractions;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
 using BookEcom.Infrastructure.Auth;
-using BookEcom.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,20 +12,23 @@ namespace BookEcom.Application.Users;
 
 public class UserManagementService(
     UserManager<AppUser> userManager,
-    AppDbContext db,
+    IUserRepository userRepo,
+    IRoleRepository roleRepo,
+    IPermissionRepository permissionRepo,
+    IUnitOfWork uow,
     LastSuperAdminPolicy lastSuperAdminPolicy,
     UserResponseProjector projector,
     ILogger<UserManagementService> logger) : IUserManagementService
 {
     public async Task<Result<UserDto>> GetMeAsync(int callerId, CancellationToken ct)
     {
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == callerId, ct);
+        var user = await userRepo.GetByIdAsync(callerId, ct);
         if (user is null) return Result<UserDto>.Unauthorized("User not found.");
 
         return new UserDto
         {
             Id = user.Id,
-            Email = user.Email ?? "",
+            Email = user.Email,
             FullName = user.FullName,
             UserType = user.UserType,
         };
@@ -33,14 +36,14 @@ public class UserManagementService(
 
     public async Task<IReadOnlyList<UserResponse>> GetAllAsync(CancellationToken ct)
     {
-        var users = await db.Users.AsNoTracking().ToListAsync(ct);
+        var users = await userRepo.GetAllAsync(ct);
         logger.LogInformation("Users.GetAll — returning {Count} users", users.Count);
         return await projector.ProjectManyAsync(users, ct);
     }
 
     public async Task<Result<UserResponse>> GetByIdAsync(int id, CancellationToken ct)
     {
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == id, ct);
+        var user = await userRepo.GetByIdAsync(id, ct);
         if (user is null) return Result<UserResponse>.NotFound($"User {id} not found.");
         return await projector.ProjectOneAsync(user, ct);
     }
@@ -65,7 +68,7 @@ public class UserManagementService(
 
         logger.LogInformation(
             "Users.Create — admin created {UserType} {Email}", req.UserType, req.Email);
-        return await projector.ProjectOneAsync(user, ct);
+        return await projector.ProjectOneAsync(ToSnapshot(user), ct);
     }
 
     public async Task<Result> DeleteAsync(int id, int callerId, CancellationToken ct)
@@ -81,27 +84,21 @@ public class UserManagementService(
 
         // Explicit transaction: our UserPermissions wipe + Identity user
         // delete (which cascades AspNetUserRoles) must succeed together.
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        try
-        {
-            await db.UserPermissions.Where(up => up.UserId == id).ExecuteDeleteAsync(ct);
+        // The await using disposal rolls back on any uncaught exception.
+        await using var transaction = await uow.BeginTransactionAsync(ct);
 
-            var deleted = await userManager.DeleteAsync(user);
-            if (!deleted.Succeeded)
-            {
-                await transaction.RollbackAsync(ct);
-                return Result.Validation(
-                    "Could not delete user.",
-                    deleted.Errors.Select(e => e.Description).ToList());
-            }
+        await userRepo.ClearDirectPermissionsAsync(id, ct);
 
-            await transaction.CommitAsync(ct);
-        }
-        catch (DbUpdateException)
+        var deleted = await userManager.DeleteAsync(user);
+        if (!deleted.Succeeded)
         {
             await transaction.RollbackAsync(ct);
-            throw;
+            return Result.Validation(
+                "Could not delete user.",
+                deleted.Errors.Select(e => e.Description).ToList());
         }
+
+        await transaction.CommitAsync(ct);
 
         logger.LogInformation("Users.Delete — deleted {Id} ({Email})", id, user.Email);
         return Result.Success();
@@ -121,10 +118,7 @@ public class UserManagementService(
                 "This user was modified by someone else. Please refresh and try again.");
         }
 
-        var requestedRoles = await db.Roles
-            .Where(r => req.RoleIds.Contains(r.Id))
-            .ToListAsync(ct);
-
+        var requestedRoles = await roleRepo.GetByIdsAsync(req.RoleIds, ct);
         var invalidIds = req.RoleIds.Except(requestedRoles.Select(r => r.Id)).ToList();
         if (invalidIds.Count > 0)
         {
@@ -138,8 +132,12 @@ public class UserManagementService(
         var currentRoles = await userManager.GetRolesAsync(user);
 
         // Transaction: remove+add must commit together, else a failed Add
-        // after a successful Remove leaves the user role-less.
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        // after a successful Remove leaves the user role-less. Identity's
+        // Update calls (RemoveFromRolesAsync, AddToRolesAsync,
+        // UpdateSecurityStampAsync) all SaveChanges internally — they
+        // participate in this transaction because they share the
+        // request-scoped DbContext.
+        await using var transaction = await uow.BeginTransactionAsync(ct);
         try
         {
             var removeResult = await userManager.RemoveFromRolesAsync(user, currentRoles);
@@ -151,7 +149,7 @@ public class UserManagementService(
                     removeResult.Errors.Select(e => e.Description).ToList());
             }
 
-            var newRoleNames = requestedRoles.Select(r => r.Name!).ToList();
+            var newRoleNames = requestedRoles.Select(r => r.Name).ToList();
             if (newRoleNames.Count > 0)
             {
                 var addResult = await userManager.AddToRolesAsync(user, newRoleNames);
@@ -181,7 +179,7 @@ public class UserManagementService(
         logger.LogInformation(
             "Users.SetRoles — set {Count} roles on {Email}",
             requestedRoles.Count, user.Email);
-        return await projector.ProjectOneAsync(user, ct);
+        return await projector.ProjectOneAsync(ToSnapshot(user), ct);
     }
 
     public async Task<Result<UserResponse>> SetPermissionsAsync(
@@ -196,10 +194,7 @@ public class UserManagementService(
                 "This user was modified by someone else. Please refresh and try again.");
         }
 
-        var validPermissions = await db.Permissions
-            .Where(p => req.PermissionIds.Contains(p.Id))
-            .ToListAsync(ct);
-
+        var validPermissions = await permissionRepo.GetByIdsAsync(req.PermissionIds, ct);
         var invalidIds = req.PermissionIds.Except(validPermissions.Select(p => p.Id)).ToList();
         if (invalidIds.Count > 0)
         {
@@ -207,34 +202,48 @@ public class UserManagementService(
                 $"Invalid permission IDs: {string.Join(", ", invalidIds)}");
         }
 
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        try
+        var newStamp = Guid.NewGuid().ToString();
+        await using var transaction = await uow.BeginTransactionAsync(ct);
+
+        await userRepo.ClearDirectPermissionsAsync(id, ct);
+        foreach (var perm in validPermissions)
         {
-            await db.UserPermissions.Where(up => up.UserId == id).ExecuteDeleteAsync(ct);
-
-            foreach (var perm in validPermissions)
+            userRepo.AddUserPermission(new UserPermission
             {
-                db.UserPermissions.Add(new UserPermission
-                {
-                    UserId = id,
-                    PermissionId = perm.Id,
-                });
-            }
-
-            user.ConcurrencyStamp = Guid.NewGuid().ToString();
-            await db.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
+                UserId = id,
+                PermissionId = perm.Id,
+            });
         }
-        catch (DbUpdateConcurrencyException)
+        await uow.SaveChangesAsync(ct);
+
+        var stamped = await userRepo.UpdateConcurrencyStampAsync(
+            id, req.ConcurrencyStamp, newStamp, ct);
+        if (!stamped)
         {
             await transaction.RollbackAsync(ct);
             return Result<UserResponse>.Conflict(
                 "This user was modified by someone else. Please refresh and try again.");
         }
 
+        await transaction.CommitAsync(ct);
+
+        // Sync the in-memory tracked entity with what we just wrote.
+        // ExecuteUpdate bypasses the change tracker, so without this the
+        // projector would emit the stale (pre-bump) ConcurrencyStamp.
+        user.ConcurrencyStamp = newStamp;
+
         logger.LogInformation(
             "Users.SetPermissions — set {Count} direct permissions on {Email}",
             validPermissions.Count, user.Email);
-        return await projector.ProjectOneAsync(user, ct);
+        return await projector.ProjectOneAsync(ToSnapshot(user), ct);
     }
+
+    private static UserSnapshot ToSnapshot(AppUser user) => new()
+    {
+        Id = user.Id,
+        Email = user.Email ?? "",
+        FullName = user.FullName,
+        UserType = user.UserType,
+        ConcurrencyStamp = user.ConcurrencyStamp ?? "",
+    };
 }

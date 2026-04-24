@@ -1,9 +1,8 @@
+using BookEcom.Domain.Abstractions;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Infrastructure.Auth;
-using BookEcom.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Application.Users.Policies;
 
@@ -17,7 +16,7 @@ namespace BookEcom.Application.Users.Policies;
 public class LastSuperAdminPolicy(
     UserManager<AppUser> userManager,
     RoleManager<IdentityRole<int>> roleManager,
-    AppDbContext db)
+    IUserRepository userRepo)
 {
     /// <summary>
     /// Succeeds unless <paramref name="user"/> is a SuperAdmin and would be
@@ -39,7 +38,7 @@ public class LastSuperAdminPolicy(
     /// </summary>
     public async Task<Result> CanDemoteAsync(
         AppUser user,
-        IReadOnlyCollection<IdentityRole<int>> newRoles,
+        IReadOnlyCollection<RoleSummary> newRoles,
         CancellationToken ct)
     {
         var currentRoles = await userManager.GetRolesAsync(user);
@@ -58,7 +57,7 @@ public class LastSuperAdminPolicy(
         var superAdminRole = await roleManager.FindByNameAsync(RoleNames.SuperAdmin);
         if (superAdminRole is null) return Result.Success();
 
-        var count = await db.UserRoles.CountAsync(ur => ur.RoleId == superAdminRole.Id, ct);
+        var count = await userRepo.CountUsersInRoleAsync(superAdminRole.Id, ct);
         return count <= 1 ? Result.Validation(message) : Result.Success();
     }
 }

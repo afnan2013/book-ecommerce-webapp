@@ -31,6 +31,25 @@ public class RoleRepository(AppDbContext db) : IRoleRepository
             })
             .FirstOrDefaultAsync(ct);
 
+    public async Task<IReadOnlyList<RoleSummary>> GetByIdsAsync(
+        IEnumerable<int> ids, CancellationToken ct)
+    {
+        var idList = ids.ToList();
+        if (idList.Count == 0) return [];
+
+        return await db.Roles
+            .AsNoTracking()
+            .Where(r => idList.Contains(r.Id))
+            .Select(r => new RoleSummary
+            {
+                Id = r.Id,
+                Name = r.Name ?? "",
+                NormalizedName = r.NormalizedName ?? "",
+                ConcurrencyStamp = r.ConcurrencyStamp ?? "",
+            })
+            .ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<Permission>> GetPermissionsForRoleAsync(
         int roleId, CancellationToken ct) =>
         await db.RolePermissions
