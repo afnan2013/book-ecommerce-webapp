@@ -1,23 +1,25 @@
 using BookEcom.Application.Dtos.Books;
+using BookEcom.Domain.Abstractions;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
-using BookEcom.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Application.Books;
 
-public class BookService(AppDbContext db, ILogger<BookService> logger) : IBookService
+public class BookService(
+    IBookRepository bookRepo,
+    IUnitOfWork uow,
+    ILogger<BookService> logger) : IBookService
 {
     public async Task<IReadOnlyList<BookResponse>> GetAllAsync(CancellationToken ct)
     {
-        var books = await db.Books.AsNoTracking().ToListAsync(ct);
+        var books = await bookRepo.GetAllAsync(ct);
         logger.LogInformation("Books.GetAll — returning {Count} books", books.Count);
         return books.Select(ToResponse).ToList();
     }
 
     public async Task<Result<BookResponse>> GetByIdAsync(int id, CancellationToken ct)
     {
-        var book = await db.Books.AsNoTracking().FirstOrDefaultAsync(b => b.Id == id, ct);
+        var book = await bookRepo.GetByIdAsync(id, ct);
         if (book is null) return Result<BookResponse>.NotFound($"Book {id} not found.");
         return ToResponse(book);
     }
@@ -28,8 +30,8 @@ public class BookService(AppDbContext db, ILogger<BookService> logger) : IBookSe
         if (created.IsFailure) return created.Error!;
 
         var book = created.Value!;
-        db.Books.Add(book);
-        await db.SaveChangesAsync(ct);
+        bookRepo.Add(book);
+        await uow.SaveChangesAsync(ct);
 
         logger.LogInformation("Books.Create — created book {Id}", book.Id);
         return ToResponse(book);
@@ -37,24 +39,24 @@ public class BookService(AppDbContext db, ILogger<BookService> logger) : IBookSe
 
     public async Task<Result> UpdateAsync(int id, UpdateBookRequest req, CancellationToken ct)
     {
-        var book = await db.Books.FindAsync([id], ct);
+        var book = await bookRepo.FindForUpdateAsync(id, ct);
         if (book is null) return Result.NotFound($"Book {id} not found.");
 
         var updated = book.Update(req.Title, req.Author, req.Price);
         if (updated.IsFailure) return updated;
 
-        await db.SaveChangesAsync(ct);
+        await uow.SaveChangesAsync(ct);
         logger.LogInformation("Books.Update — updated book {Id}", id);
         return Result.Success();
     }
 
     public async Task<Result> DeleteAsync(int id, CancellationToken ct)
     {
-        var book = await db.Books.FindAsync([id], ct);
+        var book = await bookRepo.FindForUpdateAsync(id, ct);
         if (book is null) return Result.NotFound($"Book {id} not found.");
 
-        db.Books.Remove(book);
-        await db.SaveChangesAsync(ct);
+        bookRepo.Remove(book);
+        await uow.SaveChangesAsync(ct);
         logger.LogInformation("Books.Delete — deleted book {Id}", id);
         return Result.Success();
     }

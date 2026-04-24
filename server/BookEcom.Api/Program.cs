@@ -9,6 +9,7 @@ using BookEcom.Application.Users.Policies;
 using BookEcom.Infrastructure.Auth;
 using BookEcom.Infrastructure.Auth.Jwt;
 using BookEcom.Infrastructure.Data;
+using BookEcom.Infrastructure.Data.Repositories;
 using BookEcom.Infrastructure.Data.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -45,6 +46,7 @@ builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
 // bug: a transient service that injects a scoped DbContext accidentally
 // extends the DbContext's lifetime.
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IBookRepository, BookRepository>();
 builder.Services.AddScoped<IBookService, BookService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
