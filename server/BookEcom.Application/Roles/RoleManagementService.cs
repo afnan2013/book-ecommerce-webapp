@@ -1,76 +1,68 @@
 using BookEcom.Application.Dtos.Permissions;
 using BookEcom.Application.Dtos.Roles;
+using BookEcom.Domain.Abstractions;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
-using BookEcom.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
 namespace BookEcom.Application.Roles;
 
 public class RoleManagementService(
     RoleManager<IdentityRole<int>> roleManager,
-    AppDbContext db,
+    IRoleRepository roleRepo,
+    IPermissionRepository permissionRepo,
+    IUnitOfWork uow,
     ILogger<RoleManagementService> logger) : IRoleManagementService
 {
     public async Task<IReadOnlyList<RoleResponse>> GetAllAsync(CancellationToken ct)
     {
-        // Left-join roles → role_permissions → permissions in a single query.
-        // GroupBy translates more predictably on the client side here than
-        // attempting a DB-side group over a navigation-less join.
-        var rolePermissions = await db.Roles
-            .AsNoTracking()
-            .GroupJoin(
-                db.RolePermissions.Include(rp => rp.Permission),
-                role => role.Id,
-                rp => rp.RoleId,
-                (role, perms) => new RoleResponse
-                {
-                    Id = role.Id,
-                    Name = role.Name!,
-                    ConcurrencyStamp = role.ConcurrencyStamp!,
-                    Permissions = perms.Select(rp => new PermissionDto
-                    {
-                        Id = rp.Permission.Id,
-                        Name = rp.Permission.Name,
-                        Description = rp.Permission.Description,
-                    }).ToList(),
-                })
-            .ToListAsync(ct);
+        var roles = await roleRepo.GetAllAsync(ct);
+        var permsByRole = await roleRepo.GetPermissionsForRolesAsync(
+            roles.Select(r => r.Id), ct);
 
-        logger.LogInformation("Roles.GetAll — returning {Count} roles", rolePermissions.Count);
-        return rolePermissions;
+        logger.LogInformation("Roles.GetAll — returning {Count} roles", roles.Count);
+
+        return roles.Select(r => new RoleResponse
+        {
+            Id = r.Id,
+            Name = r.Name,
+            ConcurrencyStamp = r.ConcurrencyStamp,
+            Permissions = (permsByRole.TryGetValue(r.Id, out var perms) ? perms : [])
+                .Select(p => new PermissionDto
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Description = p.Description,
+                }).ToList(),
+        }).ToList();
     }
 
     public async Task<Result<RoleResponse>> GetByIdAsync(int id, CancellationToken ct)
     {
-        var role = await db.Roles.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
+        var role = await roleRepo.GetByIdAsync(id, ct);
         if (role is null) return Result<RoleResponse>.NotFound($"Role {id} not found.");
 
-        var permissions = await db.RolePermissions
-            .AsNoTracking()
-            .Where(rp => rp.RoleId == id)
-            .Include(rp => rp.Permission)
-            .Select(rp => new PermissionDto
-            {
-                Id = rp.Permission.Id,
-                Name = rp.Permission.Name,
-                Description = rp.Permission.Description,
-            })
-            .ToListAsync(ct);
+        var permissions = await roleRepo.GetPermissionsForRoleAsync(id, ct);
 
         return new RoleResponse
         {
             Id = role.Id,
-            Name = role.Name!,
-            ConcurrencyStamp = role.ConcurrencyStamp!,
-            Permissions = permissions,
+            Name = role.Name,
+            ConcurrencyStamp = role.ConcurrencyStamp,
+            Permissions = permissions.Select(p => new PermissionDto
+            {
+                Id = p.Id,
+                Name = p.Name,
+                Description = p.Description,
+            }).ToList(),
         };
     }
 
     public async Task<Result<RoleResponse>> CreateAsync(CreateRoleRequest req, CancellationToken ct)
     {
+        // RoleManager owns creation — it normalizes the name, seeds the
+        // ConcurrencyStamp, and runs Identity's validators.
         var role = new IdentityRole<int> { Name = req.Name };
         var created = await roleManager.CreateAsync(role);
         if (!created.Succeeded)
@@ -120,8 +112,9 @@ public class RoleManagementService(
             return Result.Validation("SuperAdmin role cannot be deleted.");
 
         // Remove permission links first, then the role itself. Relies on
-        // Identity's cascade for AspNetUserRoles.
-        await db.RolePermissions.Where(rp => rp.RoleId == id).ExecuteDeleteAsync(ct);
+        // Identity's cascade for AspNetUserRoles. No explicit transaction —
+        // matches the pre-refactor behaviour.
+        await roleRepo.ClearPermissionsAsync(id, ct);
 
         var deleted = await roleManager.DeleteAsync(role);
         if (!deleted.Succeeded)
@@ -138,8 +131,7 @@ public class RoleManagementService(
     public async Task<Result<RoleResponse>> SetPermissionsAsync(
         int id, SetRolePermissionsRequest req, CancellationToken ct)
     {
-        // Tracked (not AsNoTracking) so EF sees the ConcurrencyStamp change.
-        var role = await db.Roles.FirstOrDefaultAsync(r => r.Id == id, ct);
+        var role = await roleRepo.GetByIdAsync(id, ct);
         if (role is null) return Result<RoleResponse>.NotFound($"Role {id} not found.");
 
         if (RoleNames.IsSuperAdmin(role.NormalizedName))
@@ -148,16 +140,16 @@ public class RoleManagementService(
                 "SuperAdmin permissions are managed automatically and cannot be modified.");
         }
 
+        // Fast-path concurrency check. The authoritative check is below
+        // inside UpdateConcurrencyStampAsync — this one just avoids doing
+        // any DB writes if we already know we're stale.
         if (role.ConcurrencyStamp != req.ConcurrencyStamp)
         {
             return Result<RoleResponse>.Conflict(
                 "This role was modified by someone else. Please refresh and try again.");
         }
 
-        var validPermissions = await db.Permissions
-            .Where(p => req.PermissionIds.Contains(p.Id))
-            .ToListAsync(ct);
-
+        var validPermissions = await permissionRepo.GetByIdsAsync(req.PermissionIds, ct);
         var invalidIds = req.PermissionIds.Except(validPermissions.Select(p => p.Id)).ToList();
         if (invalidIds.Count > 0)
         {
@@ -165,32 +157,38 @@ public class RoleManagementService(
                 $"Invalid permission IDs: {string.Join(", ", invalidIds)}");
         }
 
-        // Transaction: ExecuteDeleteAsync runs outside the change tracker, so
-        // wrap with the subsequent Add+SaveChanges — rollback on failure.
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        try
+        var newStamp = Guid.NewGuid().ToString();
+        await using var transaction = await uow.BeginTransactionAsync(ct);
+
+        // ExecuteDelete participates in the ambient transaction; the subsequent
+        // Adds are tracked and flushed by SaveChangesAsync into the same
+        // transaction. Any exception here causes the `await using` dispose to
+        // roll back.
+        await roleRepo.ClearPermissionsAsync(id, ct);
+
+        foreach (var perm in validPermissions)
         {
-            await db.RolePermissions.Where(rp => rp.RoleId == id).ExecuteDeleteAsync(ct);
-
-            foreach (var perm in validPermissions)
+            roleRepo.AddRolePermission(new RolePermission
             {
-                db.RolePermissions.Add(new RolePermission
-                {
-                    RoleId = id,
-                    PermissionId = perm.Id,
-                });
-            }
-
-            role.ConcurrencyStamp = Guid.NewGuid().ToString();
-            await db.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
+                RoleId = id,
+                PermissionId = perm.Id,
+            });
         }
-        catch (DbUpdateConcurrencyException)
+
+        await uow.SaveChangesAsync(ct);
+
+        // Atomic check-and-set. If someone else mutated the role between our
+        // read and this write, no rows match and we return 409.
+        var stamped = await roleRepo.UpdateConcurrencyStampAsync(
+            id, req.ConcurrencyStamp, newStamp, ct);
+        if (!stamped)
         {
             await transaction.RollbackAsync(ct);
             return Result<RoleResponse>.Conflict(
                 "This role was modified by someone else. Please refresh and try again.");
         }
+
+        await transaction.CommitAsync(ct);
 
         logger.LogInformation(
             "Roles.SetPermissions — set {Count} permissions on {Name}",
@@ -199,8 +197,8 @@ public class RoleManagementService(
         return new RoleResponse
         {
             Id = role.Id,
-            Name = role.Name!,
-            ConcurrencyStamp = role.ConcurrencyStamp,
+            Name = role.Name,
+            ConcurrencyStamp = newStamp,
             Permissions = validPermissions.Select(p => new PermissionDto
             {
                 Id = p.Id,
