@@ -153,13 +153,13 @@ Call these out as they come up naturally.
 - **Default role on register** — new Buyers/Sellers currently land with zero roles/permissions. Auto-assign by UserType, or require admin to assign first?
 - **Pagination strategy** for `GET /api/users` and future large lists.
 - **Refresh tokens** — `RefreshTokens` table + `POST /api/auth/refresh`. Also enables password reset + email confirmation flows. Needed for the SecurityStamp-based session invalidation already wired into `SetRoles` to actually take effect.
-- **Clean-architecture split** (Domain/Application/Infrastructure projects) — still deferred; unblocks repository pattern.
 - **Test strategy** — xUnit + WebApplicationFactory + Testcontainers pencilled in; not yet started.
 - **Shipping/logistics model** for sales — simulate or ignore for v1.
 - **Late-return policy** for rentals — fee calculation rules.
 
 ## Changelog
 
+- **2026-04-25** — Phase 5 shipped end-to-end (six commits). *5a.1–5a.5*: introduced `IUnitOfWork` + per-aggregate repository abstractions in `BookEcom.Domain.Abstractions` (`IBookRepository`, `IPermissionRepository`, `IRoleRepository`, `IUserRepository`); every Application service dropped `AppDbContext` and now goes through these. Read paths use untracked domain projections (`RoleSummary`, `UserSnapshot`) so Domain stays Identity-free. Concurrency-stamp bumps switched from change-tracker mutation + `DbUpdateConcurrencyException` catch to atomic `ExecuteUpdate` returning a bool. *5b*: relocated `AppUser`, `IJwtTokenService`, and `JwtOptions` from Infrastructure to `BookEcom.Application.Auth` and flipped the project arrow — Infrastructure now references Application. Result: Application has zero `using BookEcom.Infrastructure` and zero project references to Infrastructure. The dependency graph finally matches the canonical Onion / Clean Architecture shape — `Api → Application ← Infrastructure`, both pointing inward to `Domain`. SOLID's `D` is satisfied at the project-graph level. Resolves `project_decisions.md` items #1 (AppDbContext in services) and #6 (no `CancellationToken` in repo/service layer).
 - **2026-04-23** — Client rewritten (feature-sliced React app) and admin panel shipped end-to-end: Users + Roles CRUD, role/direct-permission attachment, user create/delete. Server gained `POST /api/users` + `DELETE /api/users/{id}`. Stack finalized: Zustand + React Query + axios + shadcn/ui + Tailwind v4 + react-hook-form + zod + sonner.
 - **2026-04-22** — Phase 8B landed: Permissions catalog (code-defined `PermissionNames`), role+user permission entities, EF configs extracted to `Data/Configurations/`, `IdentitySeeder` rewritten (4-step idempotent), full admin endpoints for Roles and Users (attachment + concurrency). Review identified authz gap as the #1 pre-ship item.
 - **2026-04-20** — Project initialized. Stack chosen: React + .NET 10 + PostgreSQL + Docker. Mock payment system. Primary goal: .NET Core interview prep.
