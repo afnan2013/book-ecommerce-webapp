@@ -13,6 +13,7 @@ using BookEcom.Infrastructure.Data;
 using BookEcom.Infrastructure.Data.Repositories;
 using BookEcom.Infrastructure.Data.Seed;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
