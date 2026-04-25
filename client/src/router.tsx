@@ -36,7 +36,7 @@ export const router = createBrowserRouter([
           {
             path: '/admin',
             element: (
-              <RequireUserType userType={UserType.Admin}>
+              <RequireUserType userType={UserType.Employee}>
                 <AdminLayout />
               </RequireUserType>
             ),

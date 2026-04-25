@@ -17,9 +17,9 @@ public class AuthService(
 {
     public async Task<Result<LoginResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct)
     {
-        if (req.UserType == UserType.Admin)
+        if (req.UserType == UserType.Employee)
         {
-            return Result<LoginResponse>.Validation("Admin users cannot self-register.");
+            return Result<LoginResponse>.Validation("Employee users cannot self-register.");
         }
 
         var user = new AppUser
@@ -36,6 +36,26 @@ public class AuthService(
             return Result<LoginResponse>.Validation(
                 "Could not register user.",
                 created.Errors.Select(e => e.Description).ToList());
+        }
+
+        // Auto-assign the default role for this UserType so a freshly-
+        // registered user has the baseline permissions a Buyer/Seller
+        // needs out of the gate. If the role is missing (admin deleted
+        // it post-bootstrap, mis-configured environment) we log a
+        // warning and continue — the account is still valid and an
+        // admin can grant permissions manually. We don't roll back the
+        // user creation; partial state is preferable to no account.
+        var defaultRole = RoleNames.DefaultRoleForUserType(req.UserType);
+        if (defaultRole is not null)
+        {
+            var addRole = await userManager.AddToRoleAsync(user, defaultRole);
+            if (!addRole.Succeeded)
+            {
+                logger.LogWarning(
+                    "Auth.Register — could not add {Email} to default role {Role}: {Errors}",
+                    user.Email, defaultRole,
+                    string.Join(", ", addRole.Errors.Select(e => e.Description)));
+            }
         }
 
         logger.LogInformation("Auth.Register — registered {UserType} {Email}", req.UserType, req.Email);

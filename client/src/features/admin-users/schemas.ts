@@ -6,7 +6,7 @@ export const createUserSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
   fullName: z.string().min(1, 'Full name is required'),
   userType: z.union([
-    z.literal(UserType.Admin),
+    z.literal(UserType.Employee),
     z.literal(UserType.Seller),
     z.literal(UserType.Buyer),
   ]),

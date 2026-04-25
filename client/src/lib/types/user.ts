@@ -1,7 +1,7 @@
 import type { Permission } from './permission';
 
 export const UserType = {
-  Admin: 1,
+  Employee: 1,
   Seller: 2,
   Buyer: 3,
 } as const;
@@ -9,7 +9,7 @@ export const UserType = {
 export type UserType = (typeof UserType)[keyof typeof UserType];
 
 export const UserTypeLabel: Record<UserType, string> = {
-  [UserType.Admin]: 'Admin',
+  [UserType.Employee]: 'Employee',
   [UserType.Seller]: 'Seller',
   [UserType.Buyer]: 'Buyer',
 };

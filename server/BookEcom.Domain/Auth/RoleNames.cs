@@ -32,4 +32,31 @@ public static class RoleNames
     /// </summary>
     public static bool IsSuperAdmin(string? name) =>
         string.Equals(name, SuperAdmin, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Default role assigned to a self-registered user. Bootstrapped on a
+    /// fresh DB by <c>IdentitySeeder</c>; <c>AuthService.RegisterAsync</c>
+    /// looks up the name returned here and adds the new user to it.
+    /// Returns <c>null</c> for <see cref="UserType.Employee"/> because admins
+    /// can't self-register (blocked higher up in <c>RegisterAsync</c>).
+    /// </summary>
+    public const string Buyer = "Buyer";
+
+    /// <inheritdoc cref="Buyer"/>
+    public const string Seller = "Seller";
+    public const string Employee = "Employee";
+    /// <summary>
+    /// Maps a self-registered <see cref="UserType"/> to the default role
+    /// they should land in. Returning <c>null</c> means "no default" — the
+    /// caller should leave the user role-less. The Employee branch is
+    /// theoretically reachable here but practically dead-code: employee
+    /// self-registration is rejected before this is consulted.
+    /// </summary>
+    public static string? DefaultRoleForUserType(UserType userType) => userType switch
+    {
+        UserType.Buyer => Buyer,
+        UserType.Seller => Seller,
+        UserType.Employee => Employee,
+        _ => null,
+    };
 }

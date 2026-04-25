@@ -1,10 +1,11 @@
+using BookEcom.Application.Auth;
 using BookEcom.Application.Dtos.Auth;
 using BookEcom.Application.Dtos.Users;
 using BookEcom.Application.Users.Policies;
 using BookEcom.Domain.Abstractions;
+using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
 using BookEcom.Domain.Entities;
-using BookEcom.Application.Auth;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookEcom.Application.Users;
@@ -63,6 +64,25 @@ public class UserManagementService(
             return Result<UserResponse>.Validation(
                 "Could not create user.",
                 created.Errors.Select(e => e.Description).ToList());
+        }
+
+        // Mirror AuthService.RegisterAsync — admin-created users get the
+        // default role for their UserType so Buyer/Seller/Employee creation
+        // produces a usable account out of the gate. Admins can layer
+        // additional roles afterwards via PUT /api/users/{id}/roles.
+        // Failure is logged but not fatal; partial state (user exists,
+        // role-less) is preferable to no account.
+        var defaultRole = RoleNames.DefaultRoleForUserType(req.UserType);
+        if (defaultRole is not null)
+        {
+            var addRole = await userManager.AddToRoleAsync(user, defaultRole);
+            if (!addRole.Succeeded)
+            {
+                logger.LogWarning(
+                    "Users.Create — could not add {Email} to default role {Role}: {Errors}",
+                    user.Email, defaultRole,
+                    string.Join(", ", addRole.Errors.Select(e => e.Description)));
+            }
         }
 
         logger.LogInformation(

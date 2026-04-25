@@ -6,7 +6,7 @@ export function RoleLandingRedirect() {
   const user = useAuthStore((s) => s.user);
   if (!user) return <Navigate to="/login" replace />;
   switch (user.userType) {
-    case UserType.Admin:
+    case UserType.Employee:
       return <Navigate to="/admin" replace />;
     case UserType.Buyer:
       return <Navigate to="/buyer" replace />;

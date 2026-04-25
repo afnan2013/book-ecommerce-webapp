@@ -95,7 +95,7 @@ export function CreateUserDialog({ open, onOpenChange }: Props) {
                     onChange={(e) => field.onChange(Number(e.target.value))}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value={UserType.Admin}>Admin</option>
+                    <option value={UserType.Employee}>Employee</option>
                     <option value={UserType.Seller}>Seller</option>
                     <option value={UserType.Buyer}>Buyer</option>
                   </select>

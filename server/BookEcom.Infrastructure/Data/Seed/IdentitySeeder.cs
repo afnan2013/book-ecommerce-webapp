@@ -15,8 +15,13 @@ namespace BookEcom.Infrastructure.Data.Seed;
 /// Responsibilities, in order:
 ///   1. Sync the permissions catalog with PermissionNames in code.
 ///   2. Ensure the SuperAdmin role exists and always has every permission.
-///   3. Bootstrap Moderator / SupportAdmin default roles on a fresh DB only.
-///   4. Create the default admin user and make sure they're in SuperAdmin.
+///   3. Ensure the registration roles (Buyer / Seller) exist so
+///      AuthService.RegisterAsync always has somewhere to place a new
+///      Buyer / Seller. Initial permissions seeded on first creation;
+///      admins can customise from the admin UI afterwards (no reconcile).
+///   4. Bootstrap Moderator / SupportAdmin default roles on a fresh DB only.
+///      Admins may delete these later — we don't recreate.
+///   5. Create the default admin user and make sure they're in SuperAdmin.
 /// </summary>
 public class IdentitySeeder(IServiceProvider services, ILogger<IdentitySeeder> logger) : IHostedService
 {
@@ -38,6 +43,7 @@ public class IdentitySeeder(IServiceProvider services, ILogger<IdentitySeeder> l
 
             await SyncPermissionsCatalogAsync(db, ct);
             await EnsureSuperAdminRoleAsync(db, roleManager, ct);
+            await EnsureRegistrationRolesAsync(db, roleManager, ct);
             if (isFreshDb) await BootstrapDefaultRolesAsync(db, roleManager, ct);
             await EnsureDefaultAdminAsync(userManager, ct);
         }
@@ -148,7 +154,84 @@ public class IdentitySeeder(IServiceProvider services, ILogger<IdentitySeeder> l
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // 3. Bootstrap Moderator / SupportAdmin on a fresh DB only.
+    // 3. Ensure the Buyer / Seller registration roles exist on every boot.
+    //    Distinct from step 4 (Moderator / SupportAdmin bootstrap-once)
+    //    because AuthService.RegisterAsync depends on these — if an admin
+    //    deletes them, we recreate so self-registration keeps working.
+    //    Permissions are seeded on FIRST CREATION only; admins can edit
+    //    them via the admin UI without the seeder reconciling on next boot.
+    // ──────────────────────────────────────────────────────────────────────
+    private async Task EnsureRegistrationRolesAsync(
+        AppDbContext db,
+        RoleManager<IdentityRole<int>> roleManager,
+        CancellationToken ct)
+    {
+        var registrationRoles = new Dictionary<string, string[]>
+        {
+            // Buyer: default role for self-registered shoppers. Just enough
+            // to browse the catalog. Order/checkout permissions land when
+            // those flows ship.
+            [RoleNames.Buyer] = new[]
+            {
+                PermissionNames.BooksRead,
+            },
+
+            // Seller: default role for self-registered sellers. Read +
+            // create only — books.update / books.delete are deliberately
+            // omitted because today they're unscoped permissions; granting
+            // them would let any seller edit/delete any book in the
+            // catalog. Once Book.OwnerId + ownership-scoped authorization
+            // land (see project_rbac.md "Pattern 2"), Sellers should get
+            // those verbs back, gated by ownership.
+            [RoleNames.Seller] = new[]
+            {
+                PermissionNames.BooksRead,
+                PermissionNames.BooksCreate,
+                PermissionNames.BooksDelete,
+            },
+            [RoleNames.Employee] = new[]
+            {
+                PermissionNames.BooksRead,
+                PermissionNames.BooksCreate,
+                PermissionNames.BooksDelete,
+                PermissionNames.UsersRead,
+            },
+        };
+
+        foreach (var (roleName, defaultPerms) in registrationRoles)
+        {
+            var existing = await roleManager.FindByNameAsync(roleName);
+            if (existing is not null) continue; // exists — leave permissions alone
+
+            var role = new IdentityRole<int> { Name = roleName };
+            var created = await roleManager.CreateAsync(role);
+            if (!created.Succeeded)
+            {
+                logger.LogError(
+                    "Failed to create registration role {Role}: {Errors}",
+                    roleName, string.Join("; ", created.Errors.Select(e => e.Description)));
+                continue;
+            }
+            logger.LogInformation("Created registration role {Role}", roleName);
+
+            var perms = await db.Permissions
+                .Where(p => defaultPerms.Contains(p.Name))
+                .ToListAsync(ct);
+            foreach (var perm in perms)
+            {
+                db.RolePermissions.Add(new RolePermission
+                {
+                    RoleId = role.Id,
+                    PermissionId = perm.Id,
+                });
+            }
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // 4. Bootstrap Moderator / SupportAdmin on a fresh DB only.
     //    If an admin deleted one of these later, we don't resurrect it —
     //    that would undo their decision.
     // ──────────────────────────────────────────────────────────────────────
@@ -209,24 +292,24 @@ public class IdentitySeeder(IServiceProvider services, ILogger<IdentitySeeder> l
     }
 
     // ──────────────────────────────────────────────────────────────────────
-    // 4. Ensure the default admin user exists and is in SuperAdmin.
+    // 5. Ensure the default admin user exists and is in SuperAdmin.
     // ──────────────────────────────────────────────────────────────────────
     private async Task EnsureDefaultAdminAsync(UserManager<AppUser> userManager, CancellationToken ct)
     {
-        var admin = await userManager.FindByEmailAsync(DefaultAdminEmail);
+        var employee = await userManager.FindByEmailAsync(DefaultAdminEmail);
 
-        if (admin is null)
+        if (employee is null)
         {
-            admin = new AppUser
+            employee = new AppUser
             {
                 UserName = DefaultAdminEmail,
                 Email = DefaultAdminEmail,
                 FullName = "Default SuperAdmin",
-                UserType = UserType.Admin,
+                UserType = UserType.Employee,
                 EmailConfirmed = true,
             };
 
-            var result = await userManager.CreateAsync(admin, DefaultAdminPassword);
+            var result = await userManager.CreateAsync(employee, DefaultAdminPassword);
             if (!result.Succeeded)
             {
                 logger.LogError("Failed to create default admin: {Errors}",
@@ -241,10 +324,10 @@ public class IdentitySeeder(IServiceProvider services, ILogger<IdentitySeeder> l
         }
 
         // Idempotent — only adds the link if it's not already there.
-        if (!await userManager.IsInRoleAsync(admin, RoleNames.SuperAdmin))
+        if (!await userManager.IsInRoleAsync(employee, RoleNames.SuperAdmin))
         {
-            await userManager.AddToRoleAsync(admin, RoleNames.SuperAdmin);
-            logger.LogInformation("Assigned {Role} to {Email}", RoleNames.SuperAdmin, admin.Email);
+            await userManager.AddToRoleAsync(employee, RoleNames.SuperAdmin);
+            logger.LogInformation("Assigned {Role} to {Email}", RoleNames.SuperAdmin, employee.Email);
         }
     }
 }
