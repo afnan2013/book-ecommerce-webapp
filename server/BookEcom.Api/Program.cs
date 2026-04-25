@@ -122,6 +122,12 @@ var app = builder.Build();
 // a ProblemDetails 500. Must come before any middleware that could throw.
 app.UseExceptionHandler();
 
+// UseStatusCodePages picks up empty-body 4xx/5xx responses (no-route 404,
+// no-token 401, no-perm 403) and lets IProblemDetailsService format them.
+// Without this, AddProblemDetails() only enriches exception-driven and
+// model-binding errors — framework status-only responses stay empty.
+app.UseStatusCodePages();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
