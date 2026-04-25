@@ -1,4 +1,5 @@
 using System.Text;
+using BookEcom.Api.Common.ExceptionHandling;
 using BookEcom.Application.Auth;
 using BookEcom.Domain.Abstractions;
 using BookEcom.Application.Books;
@@ -25,6 +26,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+
+// RFC 7807 error envelope. AddProblemDetails registers IProblemDetailsService
+// (used by GlobalExceptionHandler to write 500s) and tells the framework to
+// emit ProblemDetails for status-only responses (auth 401/403, model-binding
+// 400s) so every error shape on the wire matches.
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
 builder.Services.AddDbContext<AppDbContext>(opts =>
     opts.UseNpgsql(builder.Configuration.GetConnectionString("Default"))
@@ -109,6 +117,10 @@ builder.Services.AddHostedService<IdentitySeeder>();
 var app = builder.Build();
 
 // ── Pipeline ───────────────────────────────────────────────────────────────
+
+// First in the pipeline: catch any unhandled exception and render it as
+// a ProblemDetails 500. Must come before any middleware that could throw.
+app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())
 {

@@ -7,8 +7,17 @@ namespace BookEcom.Domain.Common.Results;
 /// Translates domain <see cref="Result"/> / <see cref="Result{T}"/> outcomes
 /// into ASP.NET <see cref="ActionResult"/>s. This is the single seam between
 /// the Application layer (HTTP-ignorant) and the transport layer — every
-/// controller goes through here, so changing the wire format (e.g. Step 6's
-/// ProblemDetails rollout) is a one-file edit.
+/// controller goes through here, so the wire format is one-file-controlled.
+///
+/// Failure responses follow RFC 7807 (<c>application/problem+json</c>):
+/// every non-success Result becomes a <see cref="ProblemDetails"/> body
+/// with <c>type</c>, <c>title</c>, <c>status</c>, <c>detail</c>. Domain
+/// validation errors that carry multiple detail strings (e.g. an Identity
+/// error list) attach them as a top-level <c>errors</c> extension so the
+/// client can present them as a list. The shape matches what
+/// <c>AddProblemDetails()</c> produces for framework-side errors (model
+/// binding 400s, auth 401/403), so clients see one consistent error
+/// envelope regardless of where the failure originated.
 /// </summary>
 public static class ResultExtensions
 {
@@ -38,24 +47,40 @@ public static class ResultExtensions
 
     private static ActionResult ToFailureResult(Error error)
     {
-        // Wire shape convention (preserved from pre-refactor controllers):
-        //   Details present → { errors: [...] }   — e.g. Identity error lists
-        //   Details absent  → { error: "..." }    — single-message failures
-        // Step 6 (ProblemDetails) replaces this block with a single RFC 7807
-        // mapping; callers do not change.
-        object body = error.Details is not null
-            ? new { errors = error.Details }
-            : new { error = error.Message };
-
-        return error.Code switch
+        var (status, title) = error.Code switch
         {
-            ErrorCode.NotFound => new NotFoundObjectResult(body),
-            ErrorCode.Conflict => new ConflictObjectResult(body),
-            ErrorCode.Validation => new BadRequestObjectResult(body),
-            ErrorCode.Forbidden => new ObjectResult(body) { StatusCode = StatusCodes.Status403Forbidden },
-            ErrorCode.Unauthorized => new UnauthorizedResult(),
-            ErrorCode.Unexpected => new ObjectResult(body) { StatusCode = StatusCodes.Status500InternalServerError },
-            _ => new ObjectResult(body) { StatusCode = StatusCodes.Status500InternalServerError },
+            ErrorCode.NotFound     => (StatusCodes.Status404NotFound,            "Not Found"),
+            ErrorCode.Conflict     => (StatusCodes.Status409Conflict,            "Conflict"),
+            ErrorCode.Validation   => (StatusCodes.Status400BadRequest,          "Validation Failed"),
+            ErrorCode.Forbidden    => (StatusCodes.Status403Forbidden,           "Forbidden"),
+            ErrorCode.Unauthorized => (StatusCodes.Status401Unauthorized,        "Unauthorized"),
+            ErrorCode.Unexpected   => (StatusCodes.Status500InternalServerError, "Server Error"),
+            _                      => (StatusCodes.Status500InternalServerError, "Server Error"),
+        };
+
+        var problem = new ProblemDetails
+        {
+            Type = $"https://httpstatuses.io/{status}",
+            Title = title,
+            Status = status,
+            Detail = error.Message,
+        };
+
+        if (error.Details is not null)
+        {
+            // Custom extension. Our domain Validation errors aren't
+            // field-keyed (they're business-rule strings + Identity
+            // error lists), so we don't shape this as
+            // ValidationProblemDetails.errors[field]. The client's
+            // ApiError parser tolerates either shape via `errors?:
+            // unknown`.
+            problem.Extensions["errors"] = error.Details;
+        }
+
+        return new ObjectResult(problem)
+        {
+            StatusCode = status,
+            ContentTypes = { "application/problem+json" },
         };
     }
 }
