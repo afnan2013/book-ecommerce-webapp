@@ -62,14 +62,15 @@ public class AuthService(
 
     private async Task<LoginResponse> BuildLoginResponseAsync(AppUser user, CancellationToken ct)
     {
-        // Compute effective permissions once, at token issuance time. The
-        // result is baked into the JWT as `perm` claims, so subsequent
-        // authorization checks are a claim read — no DB round-trip per
-        // request. Tradeoff: role/permission changes don't take effect
-        // until the next token is issued. Phase 8E (refresh tokens) will
-        // give us the invalidation seam.
+        // Roles + effective permissions are baked into the JWT once, at
+        // token issuance time, so subsequent authorization checks (and
+        // [Authorize(Roles=…)] fallback usage) are claim reads — no DB
+        // round-trip per request. Tradeoff: role/permission changes
+        // don't take effect until the next token is issued. Phase 8E
+        // (refresh tokens) will give us the invalidation seam.
+        var roles = await userManager.GetRolesAsync(user);
         var permissions = await permissionService.GetEffectivePermissionsAsync(user.Id, ct);
-        var (token, expiresAt) = tokens.CreateAccessToken(user, permissions);
+        var (token, expiresAt) = tokens.CreateAccessToken(user, roles, permissions);
 
         return new LoginResponse
         {

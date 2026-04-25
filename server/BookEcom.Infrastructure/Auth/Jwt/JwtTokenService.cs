@@ -13,7 +13,9 @@ public class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenService
     private readonly JwtOptions _options = options.Value;
 
     public (string token, DateTime expiresAt) CreateAccessToken(
-        AppUser user, IEnumerable<string> permissions)
+        AppUser user,
+        IEnumerable<string> roles,
+        IEnumerable<string> permissions)
     {
         var expiresAt = DateTime.UtcNow.AddMinutes(_options.AccessTokenMinutes);
 
@@ -26,10 +28,16 @@ public class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenService
             new("fullName", user.FullName),
         };
 
-        // One claim per permission. PermissionAuthorizationHandler iterates
-        // these by claim type ("perm") rather than packing them into a single
-        // delimited claim — keeps the contract trivial and lets the JWT
-        // viewer (jwt.io etc.) display each permission as its own row.
+        // One `role` claim per role. JWT bearer's default claim-type map
+        // promotes these to ClaimTypes.Role inbound, so [Authorize(Roles=…)]
+        // and User.IsInRole(...) work alongside the permission gates.
+        foreach (var role in roles)
+            claims.Add(new Claim("role", role));
+
+        // One `perm` claim per permission. PermissionAuthorizationHandler
+        // iterates these by claim type ("perm") rather than packing them into
+        // a single delimited claim — keeps the contract trivial and lets the
+        // JWT viewer (jwt.io etc.) display each permission as its own row.
         foreach (var permission in permissions)
             claims.Add(new Claim("perm", permission));
 
