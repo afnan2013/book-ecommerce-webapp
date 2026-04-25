@@ -6,7 +6,7 @@ using BookEcom.Application.Permissions;
 using BookEcom.Application.Roles;
 using BookEcom.Application.Users;
 using BookEcom.Application.Users.Policies;
-using BookEcom.Application.Auth;
+using BookEcom.Application.Auth.Authorization;
 using BookEcom.Application.Auth.Jwt;
 using BookEcom.Infrastructure.Auth.Jwt;
 using BookEcom.Infrastructure.Data;
@@ -88,6 +88,14 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+// Permission-based authorization. The policy provider materialises a
+// `perm:<name>` policy on demand for any [HasPermission(...)] usage; the
+// handler reads `perm` claims emitted into the JWT at login time. Provider
+// is Singleton (no per-request state); handler is Scoped to match the
+// other application services.
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 
 builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
