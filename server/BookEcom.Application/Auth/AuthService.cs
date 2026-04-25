@@ -1,7 +1,9 @@
+using BookEcom.Application.Auth.Jwt;
 using BookEcom.Application.Dtos.Auth;
+using BookEcom.Application.Dtos.Users;
+using BookEcom.Application.Permissions;
 using BookEcom.Domain.Auth;
 using BookEcom.Domain.Common.Results;
-using BookEcom.Application.Auth.Jwt;
 using Microsoft.AspNetCore.Identity;
 
 namespace BookEcom.Application.Auth;
@@ -10,6 +12,7 @@ public class AuthService(
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
     IJwtTokenService tokens,
+    IPermissionService permissionService,
     ILogger<AuthService> logger) : IAuthService
 {
     public async Task<Result<LoginResponse>> RegisterAsync(RegisterRequest req, CancellationToken ct)
@@ -36,7 +39,7 @@ public class AuthService(
         }
 
         logger.LogInformation("Auth.Register — registered {UserType} {Email}", req.UserType, req.Email);
-        return BuildLoginResponse(user);
+        return await BuildLoginResponseAsync(user, ct);
     }
 
     public async Task<Result<LoginResponse>> LoginAsync(LoginRequest req, CancellationToken ct)
@@ -54,12 +57,20 @@ public class AuthService(
             return Result<LoginResponse>.Unauthorized("Invalid credentials.");
         }
 
-        return BuildLoginResponse(user);
+        return await BuildLoginResponseAsync(user, ct);
     }
 
-    private LoginResponse BuildLoginResponse(AppUser user)
+    private async Task<LoginResponse> BuildLoginResponseAsync(AppUser user, CancellationToken ct)
     {
-        var (token, expiresAt) = tokens.CreateAccessToken(user);
+        // Compute effective permissions once, at token issuance time. The
+        // result is baked into the JWT as `perm` claims, so subsequent
+        // authorization checks are a claim read — no DB round-trip per
+        // request. Tradeoff: role/permission changes don't take effect
+        // until the next token is issued. Phase 8E (refresh tokens) will
+        // give us the invalidation seam.
+        var permissions = await permissionService.GetEffectivePermissionsAsync(user.Id, ct);
+        var (token, expiresAt) = tokens.CreateAccessToken(user, permissions);
+
         return new LoginResponse
         {
             AccessToken = token,
