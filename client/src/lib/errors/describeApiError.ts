@@ -16,11 +16,11 @@ export function describeApiError(
   if (err instanceof ApiError) {
     if (err.kind === 'conflict') {
       return (
-        err.title ??
+        err.detail ??
         `This ${entity ?? 'record'} was modified by someone else. Please refresh and try again.`
       );
     }
-    return err.title ?? err.detail ?? fallback;
+    return err.detail ?? err.title ?? fallback;
   }
   return fallback;
 }
