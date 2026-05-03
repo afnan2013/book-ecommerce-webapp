@@ -2,9 +2,10 @@
   "name": "book-ecommerce-app",
   "version": "0.0.0",
   "private": true,
-  "description": "Book ecommerce platform - .NET + React",
+  "description": "Book ecommerce platform - learning project (.NET paused, Go in progress) + React",
   "scripts": {
     "client": "cd client && npm run dev",
-    "server": "cd server/BookEcom.Api && dotnet run"
+    "server:asp": "cd server_asp/BookEcom.Api && dotnet run",
+    "server:go": "cd server_go && go run ./cmd/api"
   }
 }

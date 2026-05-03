@@ -1,12 +1,14 @@
 # Book Ecommerce App
 
-A full-stack marketplace for books, built as a hands-on **.NET Core learning project**. The codebase walks the canonical clean-architecture / SOLID path so each step exercises a real .NET concept end-to-end (DI lifetimes, EF Core, ASP.NET Core Identity, repository pattern, dependency inversion, optimistic concurrency, etc.).
+A full-stack marketplace for books, built as a hands-on **backend learning project for interview preparation**. The eventual product: users can **sell** books (new or used), **rent** books for a defined period, and check out via a mock payment gateway.
 
-The eventual product: users can **sell** books (new or used), **rent** books for a defined period, and check out via a mock payment gateway.
+> **Active track (2026-05-03):** **Go** backend in `server_go/` — preparing for a new Go role. Built incrementally, one concept at a time.
+>
+> **Paused track:** the original **ASP.NET Core** backend in `server_asp/` (was a .NET interview prep project; reached a complete admin RBAC + clean-architecture milestone before the pivot). The React `client/` still talks to `server_asp` until the Go backend reaches parity.
 
 ---
 
-## Status (2026-04-25)
+## Status (2026-04-25 — .NET track, paused)
 
 ### Working today
 
@@ -34,19 +36,21 @@ The eventual product: users can **sell** books (new or used), **rent** books for
 
 ## Tech Stack
 
-| Layer         | Choice                                                              |
-| ------------- | ------------------------------------------------------------------- |
-| Backend       | .NET 10 (ASP.NET Core Web API) + ASP.NET Core Identity + JWT bearer |
-| Database      | PostgreSQL via Npgsql + Entity Framework Core                       |
-| Frontend      | React 19 + Vite + TypeScript (strict, `erasableSyntaxOnly`)         |
-| Client state  | Zustand (with `persist` middleware, localStorage-backed)            |
-| Server state  | TanStack Query v5 over an axios client                              |
-| Routing       | React Router v7 (`createBrowserRouter`)                             |
-| Forms         | react-hook-form + zod (`@hookform/resolvers`)                       |
-| UI            | shadcn/ui on Tailwind v4 (Nova preset, Radix primitives, Lucide)    |
-| Toasts        | sonner                                                              |
-| API docs      | OpenAPI + Scalar                                                    |
-| Orchestration | Docker + docker-compose (Postgres only — API/client containers TBD) |
+| Layer                | Choice                                                                  |
+| -------------------- | ----------------------------------------------------------------------- |
+| Backend (active)     | **Go** — framework / router / DB layer chosen incrementally as we learn |
+| Backend (paused)     | .NET 10 (ASP.NET Core Web API) + ASP.NET Core Identity + JWT bearer     |
+| Database (Go)        | PostgreSQL — fresh schema, separate DB from the .NET one                |
+| Database (.NET)      | PostgreSQL via Npgsql + Entity Framework Core                           |
+| Frontend             | React 19 + Vite + TypeScript (strict, `erasableSyntaxOnly`)             |
+| Client state         | Zustand (with `persist` middleware, localStorage-backed)                |
+| Server state         | TanStack Query v5 over an axios client                                  |
+| Routing              | React Router v7 (`createBrowserRouter`)                                 |
+| Forms                | react-hook-form + zod (`@hookform/resolvers`)                           |
+| UI                   | shadcn/ui on Tailwind v4 (Nova preset, Radix primitives, Lucide)        |
+| Toasts               | sonner                                                                  |
+| API docs (.NET)      | OpenAPI + Scalar                                                        |
+| Orchestration        | Docker + docker-compose (Postgres only — API/client containers TBD)     |
 
 ---
 
@@ -103,28 +107,13 @@ book-ecommerce-app/
 │       ├── lib/                            # apiClient, queryKeys, handleMutationError, types
 │       ├── stores/                         # Zustand (authStore)
 │       └── router.tsx
-├── server/
+├── server_asp/                             # .NET 10 backend — paused, kept for reference
 │   ├── BookEcom.sln
 │   ├── BookEcom.Api/                       # composition root, controllers, Program.cs
-│   │   └── Common/Results/ResultExtensions.cs
-│   ├── BookEcom.Application/
-│   │   ├── Auth/                           # AppUser, IJwtTokenService, JwtOptions, AuthService
-│   │   ├── {Books,Permissions,Roles,Users}/
-│   │   └── Dtos/{Auth,Books,Permissions,Roles,Users}/
-│   ├── BookEcom.Domain/
-│   │   ├── Abstractions/                   # I*Repository, IUnitOfWork, RoleSummary, UserSnapshot
-│   │   ├── Auth/                           # UserType, RoleNames, PermissionNames
-│   │   ├── Common/Results/                 # Result<T>, Error, ErrorCode
-│   │   └── Entities/                       # Book, Permission, RolePermission, UserPermission
-│   └── BookEcom.Infrastructure/
-│       ├── Auth/Jwt/JwtTokenService.cs
-│       ├── Data/
-│       │   ├── AppDbContext.cs
-│       │   ├── UnitOfWork.cs, AppTransaction.cs
-│       │   ├── Configurations/             # IEntityTypeConfiguration<T> per entity
-│       │   ├── Repositories/               # Book / Permission / Role / User repository impls
-│       │   └── Seed/IdentitySeeder.cs
-│       └── Migrations/
+│   ├── BookEcom.Application/               # services, DTOs, AppUser, IJwtTokenService
+│   ├── BookEcom.Domain/                    # entities, repo interfaces, Result<T>
+│   └── BookEcom.Infrastructure/            # AppDbContext, repos, migrations, JwtTokenService
+├── server_go/                              # Go backend — active learning track (currently empty)
 ├── docker-compose.yml                      # Postgres (API/client containers planned)
 ├── .env.example
 ├── CLAUDE.md                               # canonical conventions & decisions
@@ -137,13 +126,14 @@ book-ecommerce-app/
 
 ### Prerequisites
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+- [Go 1.23+](https://go.dev/dl/) — for the active `server_go/` track (once it has code)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) — for the paused `server_asp/` backend
 - [Node.js 20+](https://nodejs.org/)
 - [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 PostgreSQL runs inside docker-compose — no separate install needed.
 
-### Run
+### Run (paused .NET backend — current source of API for the React client)
 
 ```bash
 # 1. Start Postgres
@@ -152,11 +142,11 @@ docker compose up -d
 
 # 2. Apply migrations
 dotnet ef database update \
-    --project server/BookEcom.Infrastructure \
-    --startup-project server/BookEcom.Api
+    --project server_asp/BookEcom.Infrastructure \
+    --startup-project server_asp/BookEcom.Api
 
 # 3. Run the API (separate terminal)
-cd server/BookEcom.Api
+cd server_asp/BookEcom.Api
 dotnet watch run
 
 # 4. Run the client (separate terminal)
@@ -164,6 +154,10 @@ cd client
 npm install
 npm run dev
 ```
+
+### Run (active Go backend)
+
+Not yet runnable — `server_go/` is empty. Setup commands will be added here as the module takes shape.
 
 | Service             | URL                                   |
 | ------------------- | ------------------------------------- |
@@ -196,24 +190,26 @@ Both are mounted only in the Development environment.
 
 ## Database & Migrations
 
-EF Core migrations are the source of truth for the schema. The `DbContext` lives in `BookEcom.Infrastructure` (separate from the startup project), so every `dotnet ef` invocation needs both `--project` and `--startup-project`:
+EF Core migrations are the source of truth for the **.NET backend's** schema. The `DbContext` lives in `BookEcom.Infrastructure` (separate from the startup project), so every `dotnet ef` invocation needs both `--project` and `--startup-project`:
 
 ```bash
 # create a new migration
 dotnet ef migrations add <Name> \
-    --project server/BookEcom.Infrastructure \
-    --startup-project server/BookEcom.Api
+    --project server_asp/BookEcom.Infrastructure \
+    --startup-project server_asp/BookEcom.Api
 
 # apply pending migrations
 dotnet ef database update \
-    --project server/BookEcom.Infrastructure \
-    --startup-project server/BookEcom.Api
+    --project server_asp/BookEcom.Infrastructure \
+    --startup-project server_asp/BookEcom.Api
 
 # remove the most recent (un-applied) migration
 dotnet ef migrations remove \
-    --project server/BookEcom.Infrastructure \
-    --startup-project server/BookEcom.Api
+    --project server_asp/BookEcom.Infrastructure \
+    --startup-project server_asp/BookEcom.Api
 ```
+
+The Go backend will use its **own fresh schema** in a separate database — no shared tables with the .NET backend. Migration tooling (likely `golang-migrate` or `goose`) will be picked once we have a first table to migrate.
 
 Conventions:
 
@@ -228,7 +224,7 @@ Conventions:
 
 Connection strings, JWT options, and CORS origins are bound from configuration:
 
-- **Development:** `server/BookEcom.Api/appsettings.Development.json` (intentional dev placeholders — change before any non-throwaway environment)
+- **Development:** `server_asp/BookEcom.Api/appsettings.Development.json` (intentional dev placeholders — change before any non-throwaway environment)
 - **Production / Docker:** environment variables (`ConnectionStrings__Default`, `Jwt__SigningKey`, etc.)
 
 Frontend reads `VITE_API_BASE_URL` from `client/.env`.

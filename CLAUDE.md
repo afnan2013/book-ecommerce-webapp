@@ -2,9 +2,19 @@
 
 ## Purpose
 
-This project is a **learning exercise** to prepare for an upcoming **.NET Core interview**. The author is learning .NET Core by building a realistic full-stack application end-to-end. Explanations, design choices, and code should favor **clarity and interview-relevant concepts** over clever shortcuts.
+This project is a **learning exercise** for interview preparation. The author is learning a backend stack end-to-end by building a realistic full-stack application. Explanations, design choices, and code should favor **clarity and interview-relevant concepts** over clever shortcuts.
 
-When suggesting an approach, briefly explain the "why" and, where it's useful, mention the .NET concept or pattern being applied (e.g., DI, middleware, EF Core conventions, DTO vs entity, async/await pitfalls). Point out the kinds of follow-up questions an interviewer might ask.
+When suggesting an approach, briefly explain the "why" and, where it's useful, mention the language/framework concept or pattern being applied. Point out the kinds of follow-up questions an interviewer might ask.
+
+## Current focus: Go (paused: ASP.NET Core)
+
+The project originally targeted **ASP.NET Core** for a .NET interview and reached a complete admin RBAC + clean-architecture milestone (preserved under `server_asp/`). It is now **paused**.
+
+The active learning track is **Go**, in `server_go/`, in preparation for a **new Go role**. Same product domain, same eventual API surface — different stack, different database (the Go backend gets its own Postgres schema; the existing EF migrations are not reused).
+
+**Pacing for the Go track is deliberately slow** — one concept at a time, depth over speed, so each topic stays interview-defensible. Do not scaffold large pieces ahead of where the discussion is. Wait for explicit direction before adding the next layer.
+
+The React `client/` continues to talk to the .NET backend until the Go backend reaches feature parity; cutover is a later decision.
 
 ## Domain
 
@@ -27,67 +37,53 @@ These are starting points. Refine them as we build.
 
 ## Tech stack
 
-| Layer         | Choice                                                             |
-| ------------- | ------------------------------------------------------------------ |
-| Backend       | .NET 10 (ASP.NET Core Web API) + ASP.NET Core Identity + JWT       |
-| Database      | PostgreSQL via Npgsql + Entity Framework Core                      |
-| Frontend      | React 19 + Vite + TypeScript (strict, `erasableSyntaxOnly`)        |
-| Client state  | Zustand (with `persist` middleware, localStorage-backed)           |
-| Server state  | TanStack Query v5 over an axios client                             |
-| Routing       | React Router v7 (`createBrowserRouter`)                            |
-| Forms         | react-hook-form + zod (+ `@hookform/resolvers`)                    |
-| UI            | shadcn/ui on Tailwind v4 (Nova preset, Radix primitives, Lucide)   |
-| Toasts        | sonner                                                             |
-| Payments      | Mock — in-process service, no external provider                    |
-| Orchestration | Docker + docker-compose for db (server/client containerization pending) |
+| Layer                | Choice                                                                  |
+| -------------------- | ----------------------------------------------------------------------- |
+| Backend (active)     | Go — framework / router / ORM TBD (decided incrementally as we learn)   |
+| Backend (paused)     | .NET 10 (ASP.NET Core Web API) + ASP.NET Core Identity + JWT            |
+| Database (Go)        | PostgreSQL — fresh schema, separate DB from the .NET one (TBD)          |
+| Database (.NET)      | PostgreSQL via Npgsql + Entity Framework Core                           |
+| Frontend             | React 19 + Vite + TypeScript (strict, `erasableSyntaxOnly`)             |
+| Client state         | Zustand (with `persist` middleware, localStorage-backed)                |
+| Server state         | TanStack Query v5 over an axios client                                  |
+| Routing              | React Router v7 (`createBrowserRouter`)                                 |
+| Forms                | react-hook-form + zod (+ `@hookform/resolvers`)                         |
+| UI                   | shadcn/ui on Tailwind v4 (Nova preset, Radix primitives, Lucide)        |
+| Toasts               | sonner                                                                  |
+| Payments             | Mock — in-process service, no external provider                         |
+| Orchestration        | Docker + docker-compose for db (backend + client containerization pending) |
 
 ## Project layout
 
-### Actual today
-
 ```
 book-ecommerce-app/
-  client/                           # Vite + React + TS, feature-sliced
+  client/                           # Vite + React + TS, feature-sliced (still talks to server_asp)
     src/
       app/                          # queryClient, route guards
-      components/
-        ui/                         # shadcn primitives
-        layout/                     # Public/Admin/Dashboard layouts
-      features/                     # feature folders: api.ts + hooks.ts + schemas.ts + pages/
-        {auth, admin-users, admin-roles, permissions, buyer, seller, shared}/
+      components/{ui,layout}/
+      features/{auth,admin-users,admin-roles,permissions,buyer,seller,shared}/
       lib/                          # apiClient, queryKeys, types/, handleMutationError, utils
       stores/                       # Zustand stores (authStore)
       router.tsx
       main.tsx
-  server/
-    BookEcom.Api/                   # single project today; see "Target" below
-      Auth/                         # AppUser, UserType, JwtTokenService, PermissionNames, RoleNames
-      Controllers/
-      Data/
-        Configurations/             # IEntityTypeConfiguration<T> per entity
-        Seed/IdentitySeeder.cs
-      Dtos/
-      Entities/
-      Migrations/
+  server_asp/                       # .NET 10 backend — paused, kept for reference
+    BookEcom.sln
+    BookEcom.Api/                   # composition root, controllers, Program.cs
+    BookEcom.Application/           # services, DTOs, AppUser, IJwtTokenService
+    BookEcom.Domain/                # entities, repo interfaces, Result<T>
+    BookEcom.Infrastructure/        # AppDbContext, repos, migrations, JwtTokenService
+  server_go/                        # Go backend — active learning track (currently empty)
   docker-compose.yml                # Postgres only; API/client containers pending
 ```
 
-### Target (clean-architecture refactor, deferred)
-
-```
-server/
-  BookEcom.Api/                     # ASP.NET Core Web API — composition root
-  BookEcom.Domain/                  # Entities, value objects, domain rules
-  BookEcom.Infrastructure/          # EF Core, DbContext, repositories, external integrations
-  BookEcom.Application/             # Use cases / services / DTOs
-  BookEcom.Tests/                   # xUnit + WebApplicationFactory + Testcontainers
-```
-
-Partial progress: entities are already in `Entities/` and EF configs are extracted to `Data/Configurations/` — the domain-layer extraction will be mostly mechanical when prioritized.
+The `server_go/` layout will grow incrementally as we learn — module init, conventional `cmd/` + `internal/` split, etc. — rather than being scaffolded up front.
 
 ## Conventions
 
-### Backend (.NET Core)
+### Backend — `server_asp/` (.NET Core, paused)
+
+These conventions describe the paused .NET backend. They are preserved as reference; new work happens in `server_go/`.
+
 
 - Target **.NET 10** (LTS, released Nov 2025).
 - **Async all the way** for I/O: `async`/`await`, `CancellationToken` on controller/service methods.
@@ -98,6 +94,19 @@ Partial progress: entities are already in `Entities/` and EF configs are extract
 - Input validation via data annotations for now (FluentValidation decision pending).
 - **Error format TODO** — CLAUDE.md wants RFC 7807 `ProblemDetails` but controllers currently return ad-hoc `{ error: "..." }`. The client has an `ApiProblem` parser ready; server retrofit is a pending follow-up (see `project_api_review_2026-04-22.md`).
 - Optimistic concurrency on user + role mutations via `ConcurrencyStamp`. 409 on mismatch.
+
+### Backend — `server_go/` (Go, active)
+
+Conventions will be added here **as we adopt them**, not before. Empty by design — the Go track is being built one teachable concept at a time, and writing aspirational rules ahead of practice would defeat the learning goal.
+
+Likely early decisions to make together (do not pre-commit):
+
+- **Module layout** — single binary under `cmd/api/`, business logic under `internal/` (Go's enforced visibility boundary).
+- **Router / web framework** — `net/http` + `chi` vs. Echo/Gin/Fiber; pick the one whose tradeoffs the user can articulate.
+- **DB driver / query layer** — `database/sql` + `pgx` vs. `sqlc` vs. an ORM like GORM/Ent; revisit after first endpoint.
+- **Migrations** — `golang-migrate` or `goose`; pick once we have a first table.
+- **Config** — env vars via `os.Getenv` to start; introduce `viper` only if it earns its weight.
+- **Auth** — JWT via `golang-jwt`; password hashing via `bcrypt`. Identity-equivalent (users, roles, permissions) is rolled by hand.
 
 ### Frontend (React)
 
@@ -125,19 +134,35 @@ Partial progress: entities are already in `Entities/` and EF configs are extract
 
 ## Learning emphasis
 
-Since this is interview prep, when we implement a feature surface the **teachable moments** briefly:
+Since this is interview prep, when we implement a feature surface the **teachable moments** briefly. Call these out as they come up naturally — don't lecture pre-emptively.
 
-- **DI & service lifetimes** (Singleton / Scoped / Transient) — when and why.
-- **Middleware pipeline** and request lifecycle.
-- **EF Core**: change tracking, lazy vs eager loading, `AsNoTracking`, N+1 problems, migrations, `ExecuteDeleteAsync` vs change tracker.
-- **Async/await**: `ConfigureAwait`, deadlocks, `CancellationToken` propagation.
-- **Authentication/Authorization**: JWT, cookie auth, policy-based authorization, `ConcurrencyStamp` vs `SecurityStamp`.
-- **Error handling**: exception middleware, `ProblemDetails`.
-- **Testing**: xUnit, Moq/NSubstitute, integration tests with `WebApplicationFactory` and Testcontainers.
-- **Clean architecture / DDD-lite**: separating Domain / Application / Infrastructure / API.
-- **REST vs RPC**, idempotency, optimistic concurrency.
+### Go (active)
 
-Call these out as they come up naturally.
+Topics likely to come up as we build, in roughly the order they tend to bite:
+
+- **Packages, modules, imports** — `go mod init`, internal/external visibility, the `internal/` directory rule.
+- **Goroutines, channels, `context.Context`** — concurrency model; what's the equivalent of cancellation tokens / async/await.
+- **Interfaces (structural / implicit satisfaction)** — the biggest mental shift from C#/Java/TS; small interfaces, accept-interfaces-return-structs.
+- **Error handling** — explicit `error` returns, `errors.Is` / `errors.As`, sentinel vs typed vs wrapped errors; no exceptions.
+- **Slices, maps, pointers vs values** — when `*T` vs `T`, slice header semantics, map zero-value gotchas.
+- **`net/http` request lifecycle** — handlers, middleware as `http.Handler` wrappers, why this is much simpler than ASP.NET's pipeline.
+- **Project structure** — `cmd/`, `internal/`, `pkg/` conventions; idiomatic Go is flatter than clean-architecture .NET.
+- **Database access** — `database/sql` vs `pgx` vs `sqlc`; `Tx` for transactions; struct scanning patterns.
+- **Auth** — JWT signing/validation, password hashing, middleware chains for auth + RBAC.
+- **Testing** — table-driven tests, `httptest`, integration tests against real Postgres (testcontainers-go).
+- **Build/deploy** — single static binary, cross-compilation, why this changes the deployment story vs .NET.
+
+### .NET (paused — for reference)
+
+- DI & service lifetimes (Singleton / Scoped / Transient).
+- Middleware pipeline and request lifecycle.
+- EF Core: change tracking, eager vs lazy loading, `AsNoTracking`, N+1, migrations, `ExecuteDeleteAsync`.
+- Async/await: `ConfigureAwait`, deadlocks, `CancellationToken` propagation.
+- AuthN/AuthZ: JWT, cookie auth, policy-based authorization, `ConcurrencyStamp` vs `SecurityStamp`.
+- Error handling: exception middleware, `ProblemDetails`.
+- Testing: xUnit, Moq/NSubstitute, `WebApplicationFactory` + Testcontainers.
+- Clean architecture / DDD-lite: Domain / Application / Infrastructure / API split.
+- REST vs RPC, idempotency, optimistic concurrency.
 
 ## Working agreement
 
@@ -155,6 +180,8 @@ Call these out as they come up naturally.
 - **Late-return policy** for rentals — fee calculation rules.
 
 ## Changelog
+
+- **2026-05-03** — **Pivot: ASP.NET Core paused, Go track started.** Renamed `server/` → `server_asp/` (preserved end-of-Phase-8B state), created empty `server_go/`. Motivation: a new Go role to interview for. Scope: same product domain, new fresh Postgres schema for Go (no schema reuse from EF migrations), React `client/` continues to talk to `server_asp` until Go reaches parity. Pacing rule for the Go track: one concept at a time, no scaffolding ahead of the discussion. `package.json` scripts updated: `server:asp` and `server:go` (the latter assumes a future `cmd/api` entry point and will fail until that exists — placeholder).
 
 - **2026-04-26** — Phase 6 (RFC 7807 ProblemDetails) shipped (one commit `ebe42de`). `ResultExtensions.ToFailureResult` now emits `application/problem+json` for every domain failure (404/409/400/403/401/500); domain validation `Details` ride along as a top-level `errors` extension. New `GlobalExceptionHandler : IExceptionHandler` is the safety net for anything that escapes a controller without becoming a `Result` — sanitises in non-Development, leaks exception type + stack trace as extensions in Development. `AddProblemDetails()` also normalises framework-side errors (auth 401/403, model-binding 400s) onto the same envelope. Client `ApiError` parser was already RFC 7807-aware so the switch is transparent. Closes review finding #3.
 - **2026-04-26** — `UserType.Admin → UserType.Employee` rename + default-role-on-creation for all user types (one commit `605de32`). UserType becomes a coarse classification (Buyer / Seller / Employee); roles carry the fine-grained capability (SuperAdmin / Moderator / SupportAdmin / per-tenant grants). Internal staff are now Employees, admin-created via `POST /api/users` with the new auto-assigned `Employee` baseline role; admins layer SuperAdmin/etc. on top via `PUT /api/users/{id}/roles`. `AuthService.RegisterAsync` and `UserManagementService.CreateAsync` both auto-assign the corresponding default role. `IdentitySeeder.EnsureRegistrationRolesAsync` ensures Buyer/Seller/Employee roles exist on every boot (permissions seeded on first creation only — admins customise from there). DB has nothing to migrate (numeric values preserved). Five client files renamed in lockstep. Closes review finding #5.
