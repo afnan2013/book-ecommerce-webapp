@@ -27,7 +27,7 @@ func main() {
 		log.Println("no .env file found, relying on real environment variables")
 	}
 
-	jwtSecret := os.Getenv("JWT_SECRET")
+	jwtSecret := os.Getenv("JWT_SECRET_KEY")
 	if jwtSecret == "" {
 		log.Fatal("JWT Secret must be set")
 	}

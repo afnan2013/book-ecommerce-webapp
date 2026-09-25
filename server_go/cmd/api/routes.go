@@ -12,12 +12,14 @@ import (
 func newRouter(pool server.DBQuerier, jwtSecret string) http.Handler {
 	mux := http.NewServeMux()
 
+	requireAuth := auth.RequireAuth(jwtSecret)
+
 	bookRepo := book.NewRepository(pool)
-	mux.HandleFunc("GET /books", book.ListHandler(bookRepo))
-	mux.HandleFunc("GET /books/{id}", book.GetByIDHandler(bookRepo))
-	mux.HandleFunc("POST /books", book.AddHandler(bookRepo))
-	mux.HandleFunc("PUT /books/{id}", book.UpdateHandler(bookRepo))
-	mux.HandleFunc("DELETE /books/{id}", book.DeleteHandler(bookRepo))
+	mux.Handle("GET /books", requireAuth(book.ListHandler(bookRepo)))
+	mux.Handle("GET /books/{id}", requireAuth(book.GetByIDHandler(bookRepo)))
+	mux.Handle("POST /books", requireAuth(book.AddHandler(bookRepo)))
+	mux.Handle("PUT /books/{id}", requireAuth(book.UpdateHandler(bookRepo)))
+	mux.Handle("DELETE /books/{id}", requireAuth(book.DeleteHandler(bookRepo)))
 
 	userRepo := user.NewRepository(pool)
 	authSvc := auth.NewService(userRepo, jwtSecret)
