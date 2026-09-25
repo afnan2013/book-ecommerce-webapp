@@ -1,0 +1,34 @@
+# ── Build output ─────────────────────────────────────
+# `go build` with no -o names the binary after the directory
+/server_go
+# cross-compiled binaries, c-shared libs, plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# Delve debug binaries left behind by the VS Code Go extension
+__debug_bin*
+
+# ── Tests, coverage, profiling ───────────────────────
+# `go test -c`
+*.test
+# `go test -coverprofile=...`
+coverage.out
+coverage.html
+# `go test -cpuprofile/-memprofile`, pprof dumps
+*.prof
+*.pprof
+
+# ── Tooling ──────────────────────────────────────────
+# air live-reload build output
+tmp/
+
+# ── Go workspaces ────────────────────────────────────
+# local multi-module setup; machine-specific, not shared
+go.work
+go.work.sum
+
+# ── Dependencies ─────────────────────────────────────
+# uncomment only if we decide to vendor
+# vendor/
