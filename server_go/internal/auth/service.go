@@ -54,7 +54,12 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 		return "", ErrInvalidCredentials
 	}
 
-	token, err := generateToken(user.ID, s.jwtSecret)
+	permissions, err := s.repo.GetPermissions(ctx, user.ID)
+	if err != nil {
+		return "", fmt.Errorf("getting permissions: %w", err)
+	}
+
+	token, err := generateToken(user.ID, permissions, s.jwtSecret)
 	if err != nil {
 		return "", fmt.Errorf("generating token: %w", err)
 	}

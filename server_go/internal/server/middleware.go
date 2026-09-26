@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
+	"slices"
 	"time"
 )
 
@@ -39,4 +40,11 @@ func Recovery(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func Chain(h http.Handler, mw ...func(http.Handler) http.Handler) http.Handler {
+	for _, m := range slices.Backward(mw) {
+		h = m(h)
+	}
+	return h
 }

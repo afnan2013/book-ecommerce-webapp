@@ -1,17 +1,25 @@
 package auth
 
 import (
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 )
 
-func generateToken(userID int, secret string) (string, error) {
-	claims := jwt.RegisteredClaims{
-		Subject:   strconv.Itoa(userID),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
+type tokenClaims struct {
+	jwt.RegisteredClaims
+	Permissions []string `json:"permissions"`
+}
+
+func generateToken(userID uuid.UUID, permissions []string, secret string) (string, error) {
+	claims := tokenClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Subject:   userID.String(),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+		Permissions: permissions,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

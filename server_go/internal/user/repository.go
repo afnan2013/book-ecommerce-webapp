@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
@@ -43,4 +44,31 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (User, bo
 		return User{}, false, fmt.Errorf("getting user by email %q: %w", email, err)
 	}
 	return u, true, nil
+}
+
+func (r *UserRepository) GetPermissions(ctx context.Context, userID uuid.UUID) ([]string, error) {
+	rows, err := r.pool.Query(ctx, `
+        SELECT p.name FROM permissions p
+        JOIN role_permissions rp ON rp.permission_id = p.id
+        JOIN user_roles ur ON ur.role_id = rp.role_id
+        WHERE ur.user_id = $1
+        UNION
+        SELECT p.name FROM permissions p
+        JOIN user_permissions up ON up.permission_id = p.id
+        WHERE up.user_id = $1
+    `, userID)
+	if err != nil {
+		return nil, fmt.Errorf("getting permissions for user %s: %w", userID, err)
+	}
+	defer rows.Close()
+
+	var permissions []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			return nil, fmt.Errorf("scanning permission: %w", err)
+		}
+		permissions = append(permissions, name)
+	}
+	return permissions, rows.Err()
 }

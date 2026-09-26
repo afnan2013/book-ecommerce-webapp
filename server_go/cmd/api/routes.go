@@ -15,7 +15,7 @@ func newRouter(pool server.DBQuerier, jwtSecret string) http.Handler {
 	requireAuth := auth.RequireAuth(jwtSecret)
 
 	bookRepo := book.NewRepository(pool)
-	mux.Handle("GET /books", requireAuth(book.ListHandler(bookRepo)))
+	mux.Handle("GET /books", server.Chain(book.ListHandler(bookRepo), requireAuth, auth.RequirePermission(auth.PermissionBooksRead)))
 	mux.Handle("GET /books/{id}", requireAuth(book.GetByIDHandler(bookRepo)))
 	mux.Handle("POST /books", requireAuth(book.AddHandler(bookRepo)))
 	mux.Handle("PUT /books/{id}", requireAuth(book.UpdateHandler(bookRepo)))

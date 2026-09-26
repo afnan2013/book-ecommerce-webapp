@@ -12,6 +12,7 @@ import (
 
 	"github.com/joho/godotenv"
 
+	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/auth"
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
 )
 
@@ -42,6 +43,10 @@ func main() {
 	defer pool.Close()
 
 	log.Println("Database connected successfully")
+
+	if err := auth.SyncPermissions(context.Background(), pool); err != nil {
+		log.Fatalf("failed to sync permissions: %v", err)
+	}
 
 	handler := newRouter(pool, jwtSecret)
 
