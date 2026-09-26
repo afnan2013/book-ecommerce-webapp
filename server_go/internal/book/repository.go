@@ -26,7 +26,7 @@ func (r *BookRepository) Add(ctx context.Context, b Book) (Book, error) {
 	return b, nil
 }
 
-func (r *BookRepository) GetByID(ctx context.Context, id int) (Book, bool, error) {
+func (r *BookRepository) GetByID(ctx context.Context, id string) (Book, bool, error) {
 	var b Book
 	err := r.pool.QueryRow(ctx, "SELECT id, title, author, price FROM books WHERE id = $1", id).Scan(
 		&b.ID, &b.Title, &b.Author, &b.Price,
@@ -36,7 +36,7 @@ func (r *BookRepository) GetByID(ctx context.Context, id int) (Book, bool, error
 		return Book{}, false, nil
 	}
 	if err != nil {
-		return Book{}, false, fmt.Errorf("getting book %d: %w", id, err)
+		return Book{}, false, fmt.Errorf("getting book %s: %w", id, err)
 	}
 	return b, true, nil
 }
@@ -64,15 +64,15 @@ func (r *BookRepository) List(ctx context.Context) ([]Book, error) {
 	return books, nil
 }
 
-func (r *BookRepository) Update(ctx context.Context, id int, b Book) (bool, error) {
+func (r *BookRepository) Update(ctx context.Context, id string, b Book) (bool, error) {
 	tag, err := r.pool.Exec(ctx, "UPDATE books SET title = $1, author = $2, price = $3 WHERE id = $4", b.Title, b.Author, b.Price, id)
 	if err != nil {
-		return false, fmt.Errorf("updating book %d: %w", id, err)
+		return false, fmt.Errorf("updating book %s: %w", id, err)
 	}
 	return tag.RowsAffected() > 0, nil
 }
 
-func (r *BookRepository) Delete(ctx context.Context, id int) (bool, error) {
+func (r *BookRepository) Delete(ctx context.Context, id string) (bool, error) {
 	tag, err := r.pool.Exec(ctx, "DELETE FROM books WHERE id = $1", id)
 	if err != nil {
 		return false, fmt.Errorf("deleting book %d: %w", id, err)

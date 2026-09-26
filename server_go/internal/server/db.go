@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	pgxuuid "github.com/vgarvardt/pgx-google-uuid/v5"
 )
 
 type DBQuerier interface {
@@ -24,6 +25,7 @@ func NewDBPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 
 	config.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		shopspring_numeric.Register(conn.TypeMap())
+		pgxuuid.Register(conn.TypeMap())
 		return nil
 	}
 

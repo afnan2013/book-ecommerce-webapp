@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
@@ -30,13 +30,13 @@ func ListHandler(repo *BookRepository) http.HandlerFunc {
 
 func GetByIDHandler(repo *BookRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(r.PathValue("id"))
+		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			server.WriteError(w, http.StatusBadRequest, "invalid book id")
 			return
 		}
 
-		b, ok, err := repo.GetByID(r.Context(), id)
+		b, ok, err := repo.GetByID(r.Context(), id.String())
 		if err != nil {
 			log.Printf("getting book by id: %v", err)
 			server.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -93,7 +93,7 @@ func AddHandler(repo *BookRepository) http.HandlerFunc {
 
 func UpdateHandler(repo *BookRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(r.PathValue("id"))
+		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			server.WriteError(w, http.StatusBadRequest, "invalid book id")
 			return
@@ -124,7 +124,7 @@ func UpdateHandler(repo *BookRepository) http.HandlerFunc {
 			return
 		}
 
-		found, err := repo.Update(r.Context(), id, b)
+		found, err := repo.Update(r.Context(), id.String(), b)
 		if err != nil {
 			log.Printf("updating book: %v", err)
 			server.WriteError(w, http.StatusInternalServerError, "internal server error")
@@ -143,13 +143,13 @@ func UpdateHandler(repo *BookRepository) http.HandlerFunc {
 
 func DeleteHandler(repo *BookRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		id, err := strconv.Atoi(r.PathValue("id"))
+		id, err := uuid.Parse(r.PathValue("id"))
 		if err != nil {
 			server.WriteError(w, http.StatusBadRequest, "invalid book id")
 			return
 		}
 
-		found, err := repo.Delete(r.Context(), id)
+		found, err := repo.Delete(r.Context(), id.String())
 		if err != nil {
 			log.Printf("deleting book: %v", err)
 			server.WriteError(w, http.StatusInternalServerError, "internal server error")
