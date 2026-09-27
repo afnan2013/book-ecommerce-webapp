@@ -22,10 +22,13 @@ func newRouter(pool server.DBQuerier, jwtSecret string, allowedOrigin string) ht
 	mux.Handle("DELETE /api/books/{id}", requireAuth(book.DeleteHandler(bookRepo)))
 
 	userRepo := user.NewRepository(pool)
+	userSvc := user.NewService(userRepo)
 	authSvc := auth.NewService(userRepo, jwtSecret)
 	mux.HandleFunc("POST /api/auth/register", auth.RegisterHandler(authSvc))
 	mux.HandleFunc("POST /api/auth/login", auth.LoginHandler(authSvc))
 	// mux.HandleFunc("GET /users/{id}", user.GetByIDHandler(userSvc))
+
+	mux.Handle("GET /api/users", server.Chain(user.ListHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersRead)))
 
 	return server.CORS(allowedOrigin)(server.Logging(server.Recovery(mux)))
 }

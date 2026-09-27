@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -17,6 +18,39 @@ type UserService struct {
 
 func NewService(repo *UserRepository) *UserService {
 	return &UserService{repo: repo}
+}
+
+func (s *UserService) List(ctx context.Context) ([]UserDetail, error) {
+	users, err := s.repo.ListUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("listing users: %w", err)
+	}
+
+	ids := make([]uuid.UUID, len(users))
+	for i, u := range users {
+		ids[i] = u.ID
+	}
+
+	roles, err := s.repo.GetRoles(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("getting roles: %w", err)
+	}
+
+	permissions, err := s.repo.GetDirectPermissions(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("getting direct permissions: %w", err)
+	}
+
+	for i := range users {
+		if r, ok := roles[users[i].ID]; ok {
+			users[i].Roles = r
+		}
+		if p, ok := permissions[users[i].ID]; ok {
+			users[i].DirectPermissions = p
+		}
+	}
+
+	return users, nil
 }
 
 func (s *UserService) CreateUser(ctx context.Context, email, password, fullName string, userType int16) (User, error) {

@@ -17,6 +17,18 @@ type registerRequest struct {
 	UserType int16  `json:"user_type"`
 }
 
+func ListHandler(svc *UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		users, err := svc.List(r.Context())
+		if err != nil {
+			log.Printf("list users: %v", err)
+			server.WriteError(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		server.WriteJSON(w, http.StatusOK, users)
+	}
+}
+
 func CreateHandler(svc *UserService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req registerRequest

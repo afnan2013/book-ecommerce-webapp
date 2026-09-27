@@ -19,6 +19,75 @@ func NewRepository(pool server.DBQuerier) *UserRepository {
 	return &UserRepository{pool: pool}
 }
 
+func (r *UserRepository) ListUsers(ctx context.Context) ([]UserDetail, error) {
+	rows, err := r.pool.Query(ctx, "SELECT id, email, full_name, user_type, created_at, concurrency_stamp FROM users")
+	if err != nil {
+		return nil, fmt.Errorf("listing users: %w", err)
+	}
+	defer rows.Close()
+
+	users := make([]UserDetail, 0)
+	for rows.Next() {
+		var ud UserDetail
+		if err := rows.Scan(&ud.ID, &ud.Email, &ud.FullName, &ud.UserType, &ud.CreatedAt, &ud.ConcurrencyStamp); err != nil {
+			return nil, fmt.Errorf("scanning user: %w", err)
+		}
+		ud.Roles = []Role{}
+		ud.DirectPermissions = []Permission{}
+		users = append(users, ud)
+	}
+	return users, rows.Err()
+}
+
+func (r *UserRepository) GetRoles(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID][]Role, error) {
+	rows, err := r.pool.Query(ctx, `
+        SELECT ur.user_id, r.id, r.name
+        FROM user_roles ur
+        JOIN roles r ON r.id = ur.role_id
+        WHERE ur.user_id = ANY($1)
+    `, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("getting roles for users: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID][]Role)
+	for rows.Next() {
+		var userID uuid.UUID
+		var role Role
+		if err := rows.Scan(&userID, &role.ID, &role.Name); err != nil {
+			return nil, fmt.Errorf("scanning user role: %w", err)
+		}
+		result[userID] = append(result[userID], role)
+	}
+	return result, rows.Err()
+}
+
+// Direct grants only, unlike GetPermissions this excludes anything granted via a role.
+func (r *UserRepository) GetDirectPermissions(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID][]Permission, error) {
+	rows, err := r.pool.Query(ctx, `
+        SELECT up.user_id, p.id, p.name, p.description
+        FROM user_permissions up
+        JOIN permissions p ON p.id = up.permission_id
+        WHERE up.user_id = ANY($1)
+    `, userIDs)
+	if err != nil {
+		return nil, fmt.Errorf("getting direct permissions for users: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[uuid.UUID][]Permission)
+	for rows.Next() {
+		var userID uuid.UUID
+		var perm Permission
+		if err := rows.Scan(&userID, &perm.ID, &perm.Name, &perm.Description); err != nil {
+			return nil, fmt.Errorf("scanning direct permission: %w", err)
+		}
+		result[userID] = append(result[userID], perm)
+	}
+	return result, rows.Err()
+}
+
 func (r *UserRepository) Create(ctx context.Context, email, passwordHash, fullName string, userType int16) (User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
