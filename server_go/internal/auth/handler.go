@@ -15,8 +15,8 @@ import (
 type registerRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
-	FullName string `json:"full_name"`
-	UserType int16  `json:"user_type"`
+	FullName string `json:"fullname"`
+	UserType int16  `json:"userType"`
 }
 
 type loginRequest struct {
@@ -48,10 +48,10 @@ func RegisterHandler(svc *AuthService) http.HandlerFunc {
 			fields["password"] = "is required"
 		}
 		if req.FullName == "" {
-			fields["full_name"] = "is required"
+			fields["fullname"] = "is required"
 		}
 		if req.UserType != user.UserTypeSeller && req.UserType != user.UserTypeBuyer {
-			fields["user_type"] = "must be seller or buyer"
+			fields["userType"] = "must be seller or buyer"
 		}
 		if len(fields) > 0 {
 			server.WriteJSON(w, http.StatusBadRequest, server.ErrorResponse{Error: "input validation failed", Fields: fields})
@@ -111,5 +111,17 @@ func LoginHandler(svc *AuthService) http.HandlerFunc {
 			ExpiresAt:   expiresAt,
 			User:        u,
 		})
+	}
+}
+
+func ListPermissionHandler(svc *AuthService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		permissions, err := svc.ListPermissions(r.Context())
+		if err != nil {
+			log.Printf("list permissions: %v", err)
+			server.WriteError(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+		server.WriteJSON(w, http.StatusOK, permissions)
 	}
 }

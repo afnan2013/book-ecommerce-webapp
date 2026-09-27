@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/role"
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
 )
 
@@ -115,6 +116,21 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (User, bo
 	return u, true, nil
 }
 
+func (r *UserRepository) GetByID(ctx context.Context, userID string) (User, bool, error) {
+	var u User
+	err := r.pool.QueryRow(ctx,
+		"SELECT id, email, password_hash, full_name, user_type, created_at FROM users WHERE id = $1", userID,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.CreatedAt)
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, false, nil
+	}
+	if err != nil {
+		return User{}, false, fmt.Errorf("getting user by id %q: %w", userID, err)
+	}
+	return u, true, nil
+}
+
 func (r *UserRepository) GetPermissions(ctx context.Context, userID uuid.UUID) ([]string, error) {
 	rows, err := r.pool.Query(ctx, `
         SELECT p.name FROM permissions p
@@ -140,4 +156,27 @@ func (r *UserRepository) GetPermissions(ctx context.Context, userID uuid.UUID) (
 		permissions = append(permissions, name)
 	}
 	return permissions, rows.Err()
+}
+
+func (r *UserRepository) GetAllPermissions(ctx context.Context) ([]role.Permission, error) {
+	rows, err := r.pool.Query(ctx, "SELECT id, name, description FROM permissions")
+	if err != nil {
+		return []role.Permission{}, fmt.Errorf("listing existing permissions: %w", err)
+	}
+
+	permissions := make([]role.Permission, 0)
+	for rows.Next() {
+		var p role.Permission
+		if err := rows.Scan(&p.ID, &p.Name, &p.Description); err != nil {
+			rows.Close()
+			return []role.Permission{}, fmt.Errorf("scanning permission: %w", err)
+		}
+		permissions = append(permissions, p)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return []role.Permission{}, fmt.Errorf("iterating permissions: %w", err)
+	}
+
+	return permissions, nil
 }

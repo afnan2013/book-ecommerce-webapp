@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/role"
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/user"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
@@ -67,4 +68,12 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	}
 
 	return token, expiresAt, u, nil
+}
+
+func (s *AuthService) ListPermissions(ctx context.Context) ([]role.Permission, error) {
+	permissions, err := s.repo.GetAllPermissions(ctx)
+	if err != nil {
+		return []role.Permission{}, fmt.Errorf("listing permissions: %w", err)
+	}
+	return permissions, nil
 }

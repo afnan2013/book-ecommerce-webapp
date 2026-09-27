@@ -1,6 +1,8 @@
 package auth
 
 const (
+	PermissionRead = "permission.read"
+
 	PermissionBooksRead   = "books.read"
 	PermissionBooksCreate = "books.create"
 	PermissionBooksUpdate = "books.update"
@@ -18,6 +20,7 @@ const (
 )
 
 var PermissionList = map[string]string{
+	PermissionRead:        "View the permissions",
 	PermissionBooksRead:   "View the book catalog",
 	PermissionBooksCreate: "Add a new book",
 	PermissionBooksUpdate: "Edit an existing book",

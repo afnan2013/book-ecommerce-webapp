@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
+	"github.com/google/uuid"
 )
 
 type registerRequest struct {
@@ -26,6 +27,30 @@ func ListHandler(svc *UserService) http.HandlerFunc {
 			return
 		}
 		server.WriteJSON(w, http.StatusOK, users)
+	}
+}
+
+func GetByIDHandler(svc *UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid user id")
+			return
+		}
+
+		b, ok, err := svc.GetByID(r.Context(), id)
+		if err != nil {
+			log.Printf("getting user by id: %v", err)
+			server.WriteError(w, http.StatusInternalServerError, "internal server error")
+			return
+		}
+
+		if !ok {
+			server.WriteError(w, http.StatusNotFound, "user not found")
+			return
+		}
+
+		server.WriteJSON(w, http.StatusOK, b)
 	}
 }
 

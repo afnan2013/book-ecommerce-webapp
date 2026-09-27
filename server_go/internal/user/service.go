@@ -53,6 +53,34 @@ func (s *UserService) List(ctx context.Context) ([]UserDetail, error) {
 	return users, nil
 }
 
+func (s *UserService) GetByID(ctx context.Context, userID uuid.UUID) (UserDetail, bool, error) {
+	user, ok, err := s.repo.GetByID(ctx, userID.String())
+	if err != nil {
+		return UserDetail{}, false, fmt.Errorf("listing users: %w", err)
+	}
+
+	if !ok {
+		return UserDetail{}, false, nil
+	}
+
+	roles, err := s.repo.GetRoles(ctx, []uuid.UUID{userID})
+	if err != nil {
+		return UserDetail{}, false, fmt.Errorf("getting roles: %w", err)
+	}
+
+	permissions, err := s.repo.GetDirectPermissions(ctx, []uuid.UUID{userID})
+	if err != nil {
+		return UserDetail{}, false, fmt.Errorf("getting direct permissions: %w", err)
+	}
+
+	return UserDetail{
+		User:              user,
+		Roles:             roles[userID],
+		DirectPermissions: permissions[userID],
+	}, true, nil
+
+}
+
 func (s *UserService) CreateUser(ctx context.Context, email, password, fullName string, userType int16) (User, error) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
