@@ -5,12 +5,12 @@ export const queryKeys = {
   users: {
     all: ['users'] as const,
     list: () => ['users', 'list'] as const,
-    byId: (id: number) => ['users', id] as const,
+    byId: (id: string) => ['users', id] as const,
   },
   roles: {
     all: ['roles'] as const,
     list: () => ['roles', 'list'] as const,
-    byId: (id: number) => ['roles', id] as const,
+    byId: (id: string) => ['roles', id] as const,
   },
   permissions: {
     all: ['permissions'] as const,

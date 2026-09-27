@@ -6,7 +6,7 @@ export async function listUsers(): Promise<UserDetail[]> {
   return data;
 }
 
-export async function getUser(id: number): Promise<UserDetail> {
+export async function getUser(id: string): Promise<UserDetail> {
   const { data } = await apiClient.get<UserDetail>(`/users/${id}`);
   return data;
 }
@@ -23,17 +23,17 @@ export async function createUser(req: CreateUserRequest): Promise<UserDetail> {
   return data;
 }
 
-export async function deleteUser(id: number): Promise<void> {
+export async function deleteUser(id: string): Promise<void> {
   await apiClient.delete(`/users/${id}`);
 }
 
 export interface UpdateUserRolesRequest {
-  roleIds: number[];
+  roleIds: string[];
   concurrencyStamp: string;
 }
 
 export async function updateUserRoles(
-  id: number,
+  id: string,
   req: UpdateUserRolesRequest,
 ): Promise<UserDetail> {
   const { data } = await apiClient.put<UserDetail>(`/users/${id}/roles`, req);
@@ -41,12 +41,12 @@ export async function updateUserRoles(
 }
 
 export interface UpdateUserPermissionsRequest {
-  permissionIds: number[];
+  permissionIds: string[];
   concurrencyStamp: string;
 }
 
 export async function updateUserPermissions(
-  id: number,
+  id: string,
   req: UpdateUserPermissionsRequest,
 ): Promise<UserDetail> {
   const { data } = await apiClient.put<UserDetail>(

@@ -15,14 +15,14 @@ export const UserTypeLabel: Record<UserType, string> = {
 };
 
 export interface User {
-  id: number;
+  id: string;
   email: string;
   fullName: string;
   userType: UserType;
 }
 
 export interface UserRole {
-  id: number;
+  id: string;
   name: string;
 }
 

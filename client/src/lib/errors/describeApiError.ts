@@ -15,6 +15,9 @@ export function describeApiError(
 ): string {
   if (err instanceof ApiError) {
     if (err.kind === 'conflict') {
+      if (err.title === "email already registered"){
+        return "Email already registered"
+      }
       return (
         err.detail ??
         `This ${entity ?? 'record'} was modified by someone else. Please refresh and try again.`

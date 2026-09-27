@@ -18,10 +18,8 @@ export function useLogin() {
 }
 
 export function useRegister() {
-  const setAuth = useAuthStore((s) => s.setAuth);
   return useMutation({
     mutationFn: (req: RegisterRequest) => register(req),
-    onSuccess: ({ accessToken, user }) => setAuth(user, accessToken),
   });
 }
 

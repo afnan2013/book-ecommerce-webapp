@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
-  roleId: number;
+  roleId: string;
   initialName: string;
   concurrencyStamp: string;
 }

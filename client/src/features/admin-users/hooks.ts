@@ -20,11 +20,11 @@ export function useUsers() {
   });
 }
 
-export function useUser(id: number) {
+export function useUser(id: string) {
   return useQuery({
     queryKey: queryKeys.users.byId(id),
     queryFn: () => getUser(id),
-    enabled: Number.isFinite(id) && id > 0,
+    enabled: !!id,
   });
 }
 
@@ -41,14 +41,14 @@ export function useCreateUser() {
 export function useDeleteUser() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => deleteUser(id),
+    mutationFn: (id: string) => deleteUser(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
     },
   });
 }
 
-export function useUpdateUserRoles(id: number) {
+export function useUpdateUserRoles(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (req: UpdateUserRolesRequest) => updateUserRoles(id, req),
@@ -64,7 +64,7 @@ export function useUpdateUserRoles(id: number) {
   });
 }
 
-export function useUpdateUserPermissions(id: number) {
+export function useUpdateUserPermissions(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (req: UpdateUserPermissionsRequest) =>

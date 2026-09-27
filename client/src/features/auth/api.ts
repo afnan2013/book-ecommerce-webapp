@@ -19,13 +19,20 @@ export interface LoginResponse {
   user: User;
 }
 
+export interface RegisterResponse {
+  id: string;
+  email: string;
+  fullName: string;
+  userType: UserType;
+}
+
 export async function login(req: LoginRequest): Promise<LoginResponse> {
   const { data } = await apiClient.post<LoginResponse>('/auth/login', req);
   return data;
 }
 
-export async function register(req: RegisterRequest): Promise<LoginResponse> {
-  const { data } = await apiClient.post<LoginResponse>('/auth/register', req);
+export async function register(req: RegisterRequest): Promise<RegisterResponse> {
+  const { data } = await apiClient.post<RegisterResponse>('/auth/register', req);
   return data;
 }
 

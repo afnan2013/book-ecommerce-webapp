@@ -20,11 +20,11 @@ export function useRoles() {
   });
 }
 
-export function useRole(id: number) {
+export function useRole(id: string) {
   return useQuery({
     queryKey: queryKeys.roles.byId(id),
     queryFn: () => getRole(id),
-    enabled: Number.isFinite(id) && id > 0,
+    enabled: !!id,
   });
 }
 
@@ -38,7 +38,7 @@ export function useCreateRole() {
   });
 }
 
-export function useUpdateRole(id: number) {
+export function useUpdateRole(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (req: UpdateRoleRequest) => updateRole(id, req),
@@ -57,7 +57,7 @@ export function useUpdateRole(id: number) {
 export function useDeleteRole() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => deleteRole(id),
+    mutationFn: (id: string) => deleteRole(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.roles.all });
       queryClient.invalidateQueries({ queryKey: queryKeys.users.all });
@@ -65,7 +65,7 @@ export function useDeleteRole() {
   });
 }
 
-export function useSetRolePermissions(id: number) {
+export function useSetRolePermissions(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (req: SetRolePermissionsRequest) => setRolePermissions(id, req),

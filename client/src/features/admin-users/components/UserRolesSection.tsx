@@ -15,9 +15,9 @@ import {
 } from '@/components/ui/card';
 
 interface Props {
-  userId: number;
+  userId: string;
   concurrencyStamp: string;
-  initialRoleIds: number[];
+  initialRoleIds: string[];
   allRoles: Role[];
   rolesLoading: boolean;
 }
@@ -30,7 +30,7 @@ export function UserRolesSection({
   rolesLoading,
 }: Props) {
   const initialSet = useMemo(() => new Set(initialRoleIds), [initialRoleIds]);
-  const [selected, setSelected] = useState<Set<number>>(() => initialSet);
+  const [selected, setSelected] = useState<Set<string>>(() => initialSet);
   const mutation = useUpdateUserRoles(userId);
 
   const hasChanges = useMemo(() => {
@@ -39,7 +39,7 @@ export function UserRolesSection({
     return false;
   }, [selected, initialSet]);
 
-  const toggle = (id: number) => {
+  const toggle = (id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);

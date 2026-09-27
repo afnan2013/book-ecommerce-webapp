@@ -41,6 +41,9 @@ export function RegisterPage() {
 
   const onSubmit = (values: RegisterInput) => {
     registerMutation.mutate(values, {
+      onSuccess: () => {
+        toast.success(`Hi ${values.fullName}! Your registeration completed. Please sign in.`);
+      },
       onError: (err) => {
         toast.error(describeApiError(err, 'Registration failed'));
       },

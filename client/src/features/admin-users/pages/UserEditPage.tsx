@@ -16,13 +16,12 @@ import {
 } from '@/components/ui/card';
 
 export function UserEditPage() {
-  const { id: idParam } = useParams<{ id: string }>();
-  const id = Number(idParam);
+  const { id = "" } = useParams<{ id: string }>();
   const userQuery = useUser(id);
   const rolesQuery = useRoles();
   const permissionsQuery = usePermissions();
 
-  if (!Number.isFinite(id) || id <= 0) {
+  if (!id) {
     return (
       <NotFoundState
         title="User not found"
@@ -64,7 +63,7 @@ export function UserEditPage() {
             key={`roles-${userQuery.data.concurrencyStamp}`}
             userId={id}
             concurrencyStamp={userQuery.data.concurrencyStamp}
-            initialRoleIds={userQuery.data.roles.map((r) => r.id)}
+            initialRoleIds={userQuery.data.roles ? userQuery.data.roles.map((r) => r.id) : []}
             allRoles={rolesQuery.data ?? []}
             rolesLoading={rolesQuery.isLoading}
           />
@@ -73,7 +72,7 @@ export function UserEditPage() {
             key={`perms-${userQuery.data.concurrencyStamp}`}
             userId={id}
             concurrencyStamp={userQuery.data.concurrencyStamp}
-            initialPermissionIds={userQuery.data.directPermissions.map((p) => p.id)}
+            initialPermissionIds={userQuery.data.directPermissions ? userQuery.data.directPermissions.map((p) => p.id) : []}
             allPermissions={permissionsQuery.data ?? []}
             permissionsLoading={permissionsQuery.isLoading}
           />

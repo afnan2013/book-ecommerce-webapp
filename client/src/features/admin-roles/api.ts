@@ -6,7 +6,7 @@ export async function listRoles(): Promise<Role[]> {
   return data;
 }
 
-export async function getRole(id: number): Promise<Role> {
+export async function getRole(id: string): Promise<Role> {
   const { data } = await apiClient.get<Role>(`/roles/${id}`);
   return data;
 }
@@ -26,23 +26,23 @@ export interface UpdateRoleRequest {
 }
 
 export async function updateRole(
-  id: number,
+  id: string,
   req: UpdateRoleRequest,
 ): Promise<void> {
   await apiClient.put(`/roles/${id}`, req);
 }
 
-export async function deleteRole(id: number): Promise<void> {
+export async function deleteRole(id: string): Promise<void> {
   await apiClient.delete(`/roles/${id}`);
 }
 
 export interface SetRolePermissionsRequest {
-  permissionIds: number[];
+  permissionIds: string[];
   concurrencyStamp: string;
 }
 
 export async function setRolePermissions(
-  id: number,
+  id: string,
   req: SetRolePermissionsRequest,
 ): Promise<Role> {
   const { data } = await apiClient.put<Role>(`/roles/${id}/permissions`, req);

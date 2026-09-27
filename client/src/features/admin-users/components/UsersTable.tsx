@@ -15,7 +15,7 @@ interface Props {
   users: UserDetail[];
   isLoading: boolean;
   emptyLabel: string;
-  currentUserId: number | undefined;
+  currentUserId: string | undefined;
   onDelete: (user: UserDetail) => void;
 }
 

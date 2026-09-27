@@ -6,14 +6,11 @@ import { usePermissions } from '@/features/permissions/hooks';
 import { describeApiError } from '@/lib/errors/describeApiError';
 import { Button } from '@/components/ui/button';
 import { NotFoundState } from '@/components/NotFoundState';
-
 export function RoleEditPage() {
-  const { id: idParam } = useParams<{ id: string }>();
-  const id = Number(idParam);
+  const { id = "" } = useParams<{ id: string }>();
   const roleQuery = useRole(id);
   const permissionsQuery = usePermissions();
-
-  if (!Number.isFinite(id) || id <= 0) {
+  if (!id) {
     return (
       <NotFoundState
         title="Role not found"
@@ -22,7 +19,6 @@ export function RoleEditPage() {
       />
     );
   }
-
   return (
     <div className="space-y-4">
       <Button asChild variant="outline" size="sm">
