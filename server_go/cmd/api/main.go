@@ -33,6 +33,8 @@ func main() {
 		log.Fatal("JWT Secret must be set")
 	}
 
+	allowedOrigin := getEnv("CORS_ALLOWED_ORIGIN", "*")
+
 	dbConnectCtx, dbConnectCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer dbConnectCancel()
 
@@ -48,7 +50,11 @@ func main() {
 		log.Fatalf("failed to sync permissions: %v", err)
 	}
 
-	handler := newRouter(pool, jwtSecret)
+	if err := auth.SyncSuperAdminRole(context.Background(), pool); err != nil {
+		log.Fatalf("failed to sync super admin role: %v", err)
+	}
+
+	handler := newRouter(pool, jwtSecret, allowedOrigin)
 
 	addr := ":" + getEnv("PORT", "8080")
 

@@ -9,23 +9,23 @@ import (
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/user"
 )
 
-func newRouter(pool server.DBQuerier, jwtSecret string) http.Handler {
+func newRouter(pool server.DBQuerier, jwtSecret string, allowedOrigin string) http.Handler {
 	mux := http.NewServeMux()
 
 	requireAuth := auth.RequireAuth(jwtSecret)
 
 	bookRepo := book.NewRepository(pool)
-	mux.Handle("GET /books", server.Chain(book.ListHandler(bookRepo), requireAuth, auth.RequirePermission(auth.PermissionBooksRead)))
-	mux.Handle("GET /books/{id}", requireAuth(book.GetByIDHandler(bookRepo)))
-	mux.Handle("POST /books", requireAuth(book.AddHandler(bookRepo)))
-	mux.Handle("PUT /books/{id}", requireAuth(book.UpdateHandler(bookRepo)))
-	mux.Handle("DELETE /books/{id}", requireAuth(book.DeleteHandler(bookRepo)))
+	mux.Handle("GET /api/books", server.Chain(book.ListHandler(bookRepo), requireAuth, auth.RequirePermission(auth.PermissionBooksRead)))
+	mux.Handle("GET /api/books/{id}", requireAuth(book.GetByIDHandler(bookRepo)))
+	mux.Handle("POST /api/books", requireAuth(book.AddHandler(bookRepo)))
+	mux.Handle("PUT /api/books/{id}", requireAuth(book.UpdateHandler(bookRepo)))
+	mux.Handle("DELETE /api/books/{id}", requireAuth(book.DeleteHandler(bookRepo)))
 
 	userRepo := user.NewRepository(pool)
 	authSvc := auth.NewService(userRepo, jwtSecret)
-	mux.HandleFunc("POST /register", auth.RegisterHandler(authSvc))
-	mux.HandleFunc("POST /login", auth.LoginHandler(authSvc))
+	mux.HandleFunc("POST /api/auth/register", auth.RegisterHandler(authSvc))
+	mux.HandleFunc("POST /api/auth/login", auth.LoginHandler(authSvc))
 	// mux.HandleFunc("GET /users/{id}", user.GetByIDHandler(userSvc))
 
-	return server.Logging(server.Recovery(mux))
+	return server.CORS(allowedOrigin)(server.Logging(server.Recovery(mux)))
 }
