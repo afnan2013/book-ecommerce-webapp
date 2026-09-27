@@ -75,7 +75,7 @@ func (r *BookRepository) Update(ctx context.Context, id string, b Book) (bool, e
 func (r *BookRepository) Delete(ctx context.Context, id string) (bool, error) {
 	tag, err := r.pool.Exec(ctx, "DELETE FROM books WHERE id = $1", id)
 	if err != nil {
-		return false, fmt.Errorf("deleting book %d: %w", id, err)
+		return false, fmt.Errorf("deleting book %s: %w", id, err)
 	}
 	return tag.RowsAffected() > 0, nil
 }
