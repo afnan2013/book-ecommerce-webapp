@@ -6,13 +6,28 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
+	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/user"
 )
 
 type registerRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	FullName string `json:"full_name"`
+	UserType int16  `json:"user_type"`
+}
+
+type loginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type loginResponse struct {
+	AccessToken string    `json:"accessToken"`
+	ExpiresAt   time.Time `json:"expiresAt"`
+	User        user.User `json:"user"`
 }
 
 func RegisterHandler(svc *AuthService) http.HandlerFunc {
@@ -32,12 +47,18 @@ func RegisterHandler(svc *AuthService) http.HandlerFunc {
 		if len(req.Password) < 8 {
 			fields["password"] = "is required"
 		}
+		if req.FullName == "" {
+			fields["full_name"] = "is required"
+		}
+		if req.UserType != user.UserTypeSeller && req.UserType != user.UserTypeBuyer {
+			fields["user_type"] = "must be seller or buyer"
+		}
 		if len(fields) > 0 {
 			server.WriteJSON(w, http.StatusBadRequest, server.ErrorResponse{Error: "input validation failed", Fields: fields})
 			return
 		}
 
-		created, err := svc.Register(r.Context(), req.Email, req.Password)
+		created, err := svc.Register(r.Context(), req.Email, req.Password, req.FullName, req.UserType)
 		if err != nil {
 			if errors.Is(err, ErrEmailTaken) {
 				server.WriteError(w, http.StatusConflict, ErrEmailTaken.Error())
@@ -48,14 +69,14 @@ func RegisterHandler(svc *AuthService) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Location", fmt.Sprintf("/users/%d", created.ID))
+		w.Header().Set("Location", fmt.Sprintf("/users/%s", created.ID))
 		server.WriteJSON(w, http.StatusCreated, created)
 	}
 }
 
 func LoginHandler(svc *AuthService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var req registerRequest
+		var req loginRequest
 
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			server.WriteError(w, http.StatusBadRequest, "invalid json data")
@@ -74,10 +95,10 @@ func LoginHandler(svc *AuthService) http.HandlerFunc {
 			return
 		}
 
-		token, err := svc.Login(r.Context(), req.Email, req.Password)
+		token, expiresAt, u, err := svc.Login(r.Context(), req.Email, req.Password)
 		if err != nil {
 			if errors.Is(err, ErrInvalidCredentials) {
-				server.WriteError(w, http.StatusUnauthorized, ErrEmailTaken.Error())
+				server.WriteError(w, http.StatusUnauthorized, ErrInvalidCredentials.Error())
 				return
 			}
 			log.Printf("user login : %v", err)
@@ -85,6 +106,10 @@ func LoginHandler(svc *AuthService) http.HandlerFunc {
 			return
 		}
 
-		server.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+		server.WriteJSON(w, http.StatusOK, loginResponse{
+			AccessToken: token,
+			ExpiresAt:   expiresAt,
+			User:        u,
+		})
 	}
 }

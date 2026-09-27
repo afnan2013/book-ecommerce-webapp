@@ -19,12 +19,12 @@ func NewRepository(pool server.DBQuerier) *UserRepository {
 	return &UserRepository{pool: pool}
 }
 
-func (r *UserRepository) Create(ctx context.Context, email, passwordHash string) (User, error) {
+func (r *UserRepository) Create(ctx context.Context, email, passwordHash, fullName string, userType int16) (User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
-		"INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id, email, password_hash, created_at",
-		email, passwordHash,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt)
+		"INSERT INTO users (email, password_hash, full_name, user_type, concurrency_stamp) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, password_hash, full_name, user_type, created_at",
+		email, passwordHash, fullName, userType, uuid.NewString(),
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.CreatedAt)
 	if err != nil {
 		return User{}, fmt.Errorf("creating user: %w", err)
 	}
@@ -34,8 +34,8 @@ func (r *UserRepository) Create(ctx context.Context, email, passwordHash string)
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (User, bool, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
-		"SELECT id, email, password_hash, created_at FROM users WHERE email = $1", email,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.CreatedAt)
+		"SELECT id, email, password_hash, full_name, user_type, created_at FROM users WHERE email = $1", email,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.CreatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, false, nil

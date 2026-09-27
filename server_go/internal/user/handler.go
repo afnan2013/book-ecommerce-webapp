@@ -13,6 +13,8 @@ import (
 type registerRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+	FullName string `json:"full_name"`
+	UserType int16  `json:"user_type"`
 }
 
 func CreateHandler(svc *UserService) http.HandlerFunc {
@@ -32,12 +34,18 @@ func CreateHandler(svc *UserService) http.HandlerFunc {
 		if len(req.Password) < 8 {
 			fields["password"] = "must be at least 8 characters"
 		}
+		if req.FullName == "" {
+			fields["full_name"] = "is required"
+		}
+		if req.UserType < UserTypeEmployee || req.UserType > UserTypeBuyer {
+			fields["user_type"] = "must be a valid user type"
+		}
 		if len(fields) > 0 {
 			server.WriteJSON(w, http.StatusBadRequest, server.ErrorResponse{Error: "input validation failed", Fields: fields})
 			return
 		}
 
-		created, err := svc.CreateUser(r.Context(), req.Email, req.Password)
+		created, err := svc.CreateUser(r.Context(), req.Email, req.Password, req.FullName, req.UserType)
 		if err != nil {
 			if errors.Is(err, ErrEmailTaken) {
 				server.WriteError(w, http.StatusConflict, "email already registered")
@@ -48,7 +56,7 @@ func CreateHandler(svc *UserService) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Location", fmt.Sprintf("/users/%d", created.ID))
+		w.Header().Set("Location", fmt.Sprintf("/users/%s", created.ID))
 		server.WriteJSON(w, http.StatusCreated, created)
 	}
 }

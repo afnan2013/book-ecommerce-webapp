@@ -19,13 +19,13 @@ func NewService(repo *UserRepository) *UserService {
 	return &UserService{repo: repo}
 }
 
-func (s *UserService) CreateUser(ctx context.Context, email, password string) (User, error) {
+func (s *UserService) CreateUser(ctx context.Context, email, password, fullName string, userType int16) (User, error) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return User{}, fmt.Errorf("generating password hashing: %w", err)
 	}
 
-	created, err := s.repo.Create(ctx, email, string(passwordHash))
+	created, err := s.repo.Create(ctx, email, string(passwordHash), fullName, userType)
 	if err != nil {
 		var pgErr *pgconn.PgError
 

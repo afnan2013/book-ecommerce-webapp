@@ -12,11 +12,11 @@ type tokenClaims struct {
 	Permissions []string `json:"permissions"`
 }
 
-func generateToken(userID uuid.UUID, permissions []string, secret string) (string, error) {
+func generateToken(userID uuid.UUID, permissions []string, expiresAt time.Time, secret string) (string, error) {
 	claims := tokenClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			Subject:   userID.String(),
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 		Permissions: permissions,

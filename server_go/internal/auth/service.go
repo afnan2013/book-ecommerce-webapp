@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/user"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -22,13 +23,13 @@ func NewService(repo *user.UserRepository, jwtSecret string) *AuthService {
 	return &AuthService{repo: repo, jwtSecret: jwtSecret}
 }
 
-func (s *AuthService) Register(ctx context.Context, email, password string) (user.User, error) {
+func (s *AuthService) Register(ctx context.Context, email, password, fullName string, userType int16) (user.User, error) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return user.User{}, fmt.Errorf("generating password hashing: %w", err)
 	}
 
-	created, err := s.repo.Create(ctx, email, string(passwordHash))
+	created, err := s.repo.Create(ctx, email, string(passwordHash), fullName, userType)
 	if err != nil {
 		var pgErr *pgconn.PgError
 
@@ -41,28 +42,29 @@ func (s *AuthService) Register(ctx context.Context, email, password string) (use
 	return created, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, email, password string) (string, error) {
-	user, ok, err := s.repo.GetByEmail(ctx, email)
+func (s *AuthService) Login(ctx context.Context, email, password string) (string, time.Time, user.User, error) {
+	u, ok, err := s.repo.GetByEmail(ctx, email)
 	if err != nil {
-		return "", fmt.Errorf("getting user by email: %w", err)
+		return "", time.Time{}, user.User{}, fmt.Errorf("getting user by email: %w", err)
 	}
 	if !ok {
-		return "", ErrInvalidCredentials
+		return "", time.Time{}, user.User{}, ErrInvalidCredentials
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
-		return "", ErrInvalidCredentials
+	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
+		return "", time.Time{}, user.User{}, ErrInvalidCredentials
 	}
 
-	permissions, err := s.repo.GetPermissions(ctx, user.ID)
+	permissions, err := s.repo.GetPermissions(ctx, u.ID)
 	if err != nil {
-		return "", fmt.Errorf("getting permissions: %w", err)
+		return "", time.Time{}, user.User{}, fmt.Errorf("getting permissions: %w", err)
 	}
 
-	token, err := generateToken(user.ID, permissions, s.jwtSecret)
+	expiresAt := time.Now().Add(24 * time.Hour)
+	token, err := generateToken(u.ID, permissions, expiresAt, s.jwtSecret)
 	if err != nil {
-		return "", fmt.Errorf("generating token: %w", err)
+		return "", time.Time{}, user.User{}, fmt.Errorf("generating token: %w", err)
 	}
 
-	return token, nil
+	return token, expiresAt, u, nil
 }
