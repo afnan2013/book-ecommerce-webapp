@@ -21,7 +21,7 @@ func NewRepository(pool server.DBQuerier) *UserRepository {
 }
 
 func (r *UserRepository) ListUsers(ctx context.Context) ([]UserDetail, error) {
-	rows, err := r.pool.Query(ctx, "SELECT id, email, full_name, user_type, created_at, concurrency_stamp FROM users")
+	rows, err := r.pool.Query(ctx, "SELECT id, email, full_name, user_type, phone_number, address, created_at, concurrency_stamp FROM users")
 	if err != nil {
 		return nil, fmt.Errorf("listing users: %w", err)
 	}
@@ -30,7 +30,7 @@ func (r *UserRepository) ListUsers(ctx context.Context) ([]UserDetail, error) {
 	users := make([]UserDetail, 0)
 	for rows.Next() {
 		var ud UserDetail
-		if err := rows.Scan(&ud.ID, &ud.Email, &ud.FullName, &ud.UserType, &ud.CreatedAt, &ud.ConcurrencyStamp); err != nil {
+		if err := rows.Scan(&ud.ID, &ud.Email, &ud.FullName, &ud.UserType, &ud.PhoneNumber, &ud.Address, &ud.CreatedAt, &ud.ConcurrencyStamp); err != nil {
 			return nil, fmt.Errorf("scanning user: %w", err)
 		}
 		ud.Roles = []Role{}
@@ -92,9 +92,9 @@ func (r *UserRepository) GetDirectPermissions(ctx context.Context, userIDs []uui
 func (r *UserRepository) Create(ctx context.Context, email, passwordHash, fullName string, userType int16) (User, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
-		"INSERT INTO users (email, password_hash, full_name, user_type, concurrency_stamp) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, password_hash, full_name, user_type, created_at",
+		"INSERT INTO users (email, password_hash, full_name, user_type, concurrency_stamp) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, password_hash, full_name, user_type, phone_number, address, created_at",
 		email, passwordHash, fullName, userType, uuid.NewString(),
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.CreatedAt)
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.PhoneNumber, &u.Address, &u.CreatedAt)
 	if err != nil {
 		return User{}, fmt.Errorf("creating user: %w", err)
 	}
@@ -104,8 +104,8 @@ func (r *UserRepository) Create(ctx context.Context, email, passwordHash, fullNa
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (User, bool, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
-		"SELECT id, email, password_hash, full_name, user_type, created_at FROM users WHERE email = $1", email,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.CreatedAt)
+		"SELECT id, email, password_hash, full_name, user_type, phone_number, address, created_at FROM users WHERE email = $1", email,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.PhoneNumber, &u.Address, &u.CreatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, false, nil
@@ -119,14 +119,33 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (User, bo
 func (r *UserRepository) GetByID(ctx context.Context, userID string) (User, bool, error) {
 	var u User
 	err := r.pool.QueryRow(ctx,
-		"SELECT id, email, password_hash, full_name, user_type, created_at FROM users WHERE id = $1", userID,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.CreatedAt)
+		"SELECT id, email, password_hash, full_name, user_type, phone_number, address, created_at FROM users WHERE id = $1", userID,
+	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.PhoneNumber, &u.Address, &u.CreatedAt)
 
 	if errors.Is(err, pgx.ErrNoRows) {
 		return User{}, false, nil
 	}
 	if err != nil {
 		return User{}, false, fmt.Errorf("getting user by id %q: %w", userID, err)
+	}
+	return u, true, nil
+}
+
+// UpdateProfile returns ok=false when either the user does not exist or oldStamp no longer matches.
+func (r *UserRepository) UpdateProfile(ctx context.Context, id uuid.UUID, fullName string, phoneNumber, address *string, oldStamp string) (User, bool, error) {
+	var u User
+	err := r.pool.QueryRow(ctx, `
+        UPDATE users
+        SET full_name = $1, phone_number = $2, address = $3, concurrency_stamp = $4
+        WHERE id = $5 AND concurrency_stamp = $6
+        RETURNING id, email, full_name, user_type, phone_number, address, created_at
+    `, fullName, phoneNumber, address, uuid.NewString(), id, oldStamp,
+	).Scan(&u.ID, &u.Email, &u.FullName, &u.UserType, &u.PhoneNumber, &u.Address, &u.CreatedAt)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return User{}, false, nil
+	}
+	if err != nil {
+		return User{}, false, fmt.Errorf("updating user %s: %w", id, err)
 	}
 	return u, true, nil
 }
@@ -179,4 +198,12 @@ func (r *UserRepository) GetAllPermissions(ctx context.Context) ([]role.Permissi
 	}
 
 	return permissions, nil
+}
+
+func (r *UserRepository) DeleteUserById(ctx context.Context, id string) (bool, error) {
+	tag, err := r.pool.Exec(ctx, "DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		return false, fmt.Errorf("deleting a user: %w", err)
+	}
+	return tag.RowsAffected() > 0, nil
 }

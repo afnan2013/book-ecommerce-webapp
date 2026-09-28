@@ -18,6 +18,8 @@ type User struct {
 	PasswordHash string    `json:"-"`
 	FullName     string    `json:"fullName"`
 	UserType     int16     `json:"userType"`
+	PhoneNumber  *string   `json:"phoneNumber"`
+	Address      *string   `json:"address"`
 	CreatedAt    time.Time `json:"createdAt"`
 }
 

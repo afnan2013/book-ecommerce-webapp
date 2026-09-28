@@ -1,0 +1,2 @@
+ALTER TABLE users ADD COLUMN phone_number TEXT;
+ALTER TABLE users ADD COLUMN address TEXT;
