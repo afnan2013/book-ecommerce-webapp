@@ -1,19 +1,14 @@
 package auth
 
 import (
-	"context"
 	"net/http"
 	"strings"
 
+	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/authctx"
 	"github.com/afnan2013/book-ecommerce-webapp/server_go/internal/server"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
-
-type contextKey string
-
-var userIDContextKey contextKey = "userID"
-var permissionsContextKey contextKey = "permissions"
 
 func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
@@ -44,8 +39,8 @@ func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 				permissions[p] = true
 			}
 
-			ctx := context.WithValue(r.Context(), userIDContextKey, userID)
-			ctx = context.WithValue(ctx, permissionsContextKey, permissions)
+			ctx := authctx.WithUserID(r.Context(), userID)
+			ctx = authctx.WithPermissions(ctx, permissions)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -54,7 +49,7 @@ func RequireAuth(jwtSecret string) func(http.Handler) http.Handler {
 func RequirePermission(permissions ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			perms, ok := PermissionsFromContext(r.Context())
+			perms, ok := authctx.Permissions(r.Context())
 			if !ok {
 				server.WriteError(w, http.StatusForbidden, "forbidden")
 				return
@@ -68,14 +63,4 @@ func RequirePermission(permissions ...string) func(http.Handler) http.Handler {
 			server.WriteError(w, http.StatusForbidden, "forbidden")
 		})
 	}
-}
-
-func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
-	id, ok := ctx.Value(userIDContextKey).(uuid.UUID)
-	return id, ok
-}
-
-func PermissionsFromContext(ctx context.Context) (map[string]bool, bool) {
-	perms, ok := ctx.Value(permissionsContextKey).(map[string]bool)
-	return perms, ok
 }
