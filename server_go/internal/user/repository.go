@@ -116,38 +116,42 @@ func (r *UserRepository) GetByEmail(ctx context.Context, email string) (User, bo
 	return u, true, nil
 }
 
-func (r *UserRepository) GetByID(ctx context.Context, userID string) (User, bool, error) {
-	var u User
+func (r *UserRepository) GetByID(ctx context.Context, userID string) (UserDetail, bool, error) {
+	var ud UserDetail
 	err := r.pool.QueryRow(ctx,
-		"SELECT id, email, password_hash, full_name, user_type, phone_number, address, created_at FROM users WHERE id = $1", userID,
-	).Scan(&u.ID, &u.Email, &u.PasswordHash, &u.FullName, &u.UserType, &u.PhoneNumber, &u.Address, &u.CreatedAt)
+		"SELECT id, email, password_hash, full_name, user_type, phone_number, address, created_at, concurrency_stamp FROM users WHERE id = $1", userID,
+	).Scan(&ud.ID, &ud.Email, &ud.PasswordHash, &ud.FullName, &ud.UserType, &ud.PhoneNumber, &ud.Address, &ud.CreatedAt, &ud.ConcurrencyStamp)
 
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, false, nil
+		return UserDetail{}, false, nil
 	}
 	if err != nil {
-		return User{}, false, fmt.Errorf("getting user by id %q: %w", userID, err)
+		return UserDetail{}, false, fmt.Errorf("getting user by id %q: %w", userID, err)
 	}
-	return u, true, nil
+	ud.Roles = []Role{}
+	ud.DirectPermissions = []Permission{}
+	return ud, true, nil
 }
 
 // UpdateProfile returns ok=false when either the user does not exist or oldStamp no longer matches.
-func (r *UserRepository) UpdateProfile(ctx context.Context, id uuid.UUID, fullName string, phoneNumber, address *string, oldStamp string) (User, bool, error) {
-	var u User
+func (r *UserRepository) UpdateProfile(ctx context.Context, id uuid.UUID, fullName string, phoneNumber, address *string, oldStamp string) (UserDetail, bool, error) {
+	var ud UserDetail
 	err := r.pool.QueryRow(ctx, `
         UPDATE users
         SET full_name = $1, phone_number = $2, address = $3, concurrency_stamp = $4
         WHERE id = $5 AND concurrency_stamp = $6
-        RETURNING id, email, full_name, user_type, phone_number, address, created_at
+        RETURNING id, email, full_name, user_type, phone_number, address, created_at, concurrency_stamp
     `, fullName, phoneNumber, address, uuid.NewString(), id, oldStamp,
-	).Scan(&u.ID, &u.Email, &u.FullName, &u.UserType, &u.PhoneNumber, &u.Address, &u.CreatedAt)
+	).Scan(&ud.ID, &ud.Email, &ud.FullName, &ud.UserType, &ud.PhoneNumber, &ud.Address, &ud.CreatedAt, &ud.ConcurrencyStamp)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return User{}, false, nil
+		return UserDetail{}, false, nil
 	}
 	if err != nil {
-		return User{}, false, fmt.Errorf("updating user %s: %w", id, err)
+		return UserDetail{}, false, fmt.Errorf("updating user %s: %w", id, err)
 	}
-	return u, true, nil
+	ud.Roles = []Role{}
+	ud.DirectPermissions = []Permission{}
+	return ud, true, nil
 }
 
 func (r *UserRepository) GetPermissions(ctx context.Context, userID uuid.UUID) ([]string, error) {
@@ -198,6 +202,82 @@ func (r *UserRepository) GetAllPermissions(ctx context.Context) ([]role.Permissi
 	}
 
 	return permissions, nil
+}
+
+// Runs in a transaction so a concurrent stamp mismatch can't leave assignments half-applied.
+func (r *UserRepository) SetRoles(ctx context.Context, id uuid.UUID, roleIDs []uuid.UUID, oldStamp string) (bool, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return false, fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx,
+		"UPDATE users SET concurrency_stamp = $1 WHERE id = $2 AND concurrency_stamp = $3",
+		uuid.NewString(), id, oldStamp,
+	)
+	if err != nil {
+		return false, fmt.Errorf("updating user stamp: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return false, nil
+	}
+
+	if _, err := tx.Exec(ctx, "DELETE FROM user_roles WHERE user_id = $1", id); err != nil {
+		return false, fmt.Errorf("clearing roles for user %s: %w", id, err)
+	}
+
+	for _, roleID := range roleIDs {
+		if _, err := tx.Exec(ctx,
+			"INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)",
+			id, roleID,
+		); err != nil {
+			return false, fmt.Errorf("assigning role %s to user %s: %w", roleID, id, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("committing user role update: %w", err)
+	}
+	return true, nil
+}
+
+// Runs in a transaction so a concurrent stamp mismatch can't leave grants half-applied.
+func (r *UserRepository) SetDirectPermissions(ctx context.Context, id uuid.UUID, permissionIDs []uuid.UUID, oldStamp string) (bool, error) {
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return false, fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	tag, err := tx.Exec(ctx,
+		"UPDATE users SET concurrency_stamp = $1 WHERE id = $2 AND concurrency_stamp = $3",
+		uuid.NewString(), id, oldStamp,
+	)
+	if err != nil {
+		return false, fmt.Errorf("updating user stamp: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return false, nil
+	}
+
+	if _, err := tx.Exec(ctx, "DELETE FROM user_permissions WHERE user_id = $1", id); err != nil {
+		return false, fmt.Errorf("clearing direct permissions for user %s: %w", id, err)
+	}
+
+	for _, permissionID := range permissionIDs {
+		if _, err := tx.Exec(ctx,
+			"INSERT INTO user_permissions (user_id, permission_id) VALUES ($1, $2)",
+			id, permissionID,
+		); err != nil {
+			return false, fmt.Errorf("granting permission %s to user %s: %w", permissionID, id, err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return false, fmt.Errorf("committing user permission update: %w", err)
+	}
+	return true, nil
 }
 
 func (r *UserRepository) DeleteUserById(ctx context.Context, id string) (bool, error) {

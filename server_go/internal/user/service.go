@@ -56,7 +56,7 @@ func (s *UserService) List(ctx context.Context) ([]UserDetail, error) {
 }
 
 func (s *UserService) GetByID(ctx context.Context, userID uuid.UUID) (UserDetail, bool, error) {
-	user, ok, err := s.repo.GetByID(ctx, userID.String())
+	detail, ok, err := s.repo.GetByID(ctx, userID.String())
 	if err != nil {
 		return UserDetail{}, false, fmt.Errorf("getting user: %w", err)
 	}
@@ -65,22 +65,30 @@ func (s *UserService) GetByID(ctx context.Context, userID uuid.UUID) (UserDetail
 		return UserDetail{}, false, nil
 	}
 
-	roles, err := s.repo.GetRoles(ctx, []uuid.UUID{userID})
+	if err := s.attachRolesAndPermissions(ctx, &detail); err != nil {
+		return UserDetail{}, false, err
+	}
+	return detail, true, nil
+}
+
+func (s *UserService) attachRolesAndPermissions(ctx context.Context, detail *UserDetail) error {
+	roles, err := s.repo.GetRoles(ctx, []uuid.UUID{detail.ID})
 	if err != nil {
-		return UserDetail{}, false, fmt.Errorf("getting roles: %w", err)
+		return fmt.Errorf("getting roles: %w", err)
 	}
 
-	permissions, err := s.repo.GetDirectPermissions(ctx, []uuid.UUID{userID})
+	permissions, err := s.repo.GetDirectPermissions(ctx, []uuid.UUID{detail.ID})
 	if err != nil {
-		return UserDetail{}, false, fmt.Errorf("getting direct permissions: %w", err)
+		return fmt.Errorf("getting direct permissions: %w", err)
 	}
 
-	return UserDetail{
-		User:              user,
-		Roles:             roles[userID],
-		DirectPermissions: permissions[userID],
-	}, true, nil
-
+	if r, ok := roles[detail.ID]; ok {
+		detail.Roles = r
+	}
+	if p, ok := permissions[detail.ID]; ok {
+		detail.DirectPermissions = p
+	}
+	return nil
 }
 
 func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, fullName string, phoneNumber, address *string, stamp string) (UserDetail, error) {
@@ -100,21 +108,58 @@ func (s *UserService) UpdateProfile(ctx context.Context, userID uuid.UUID, fullN
 		return UserDetail{}, ErrConflict
 	}
 
-	roles, err := s.repo.GetRoles(ctx, []uuid.UUID{userID})
+	if err := s.attachRolesAndPermissions(ctx, &updated); err != nil {
+		return UserDetail{}, err
+	}
+	return updated, nil
+}
+
+func (s *UserService) SetRoles(ctx context.Context, userID uuid.UUID, roleIDs []uuid.UUID, stamp string) (UserDetail, error) {
+	_, ok, err := s.repo.GetByID(ctx, userID.String())
 	if err != nil {
-		return UserDetail{}, fmt.Errorf("getting roles: %w", err)
+		return UserDetail{}, fmt.Errorf("getting user: %w", err)
+	}
+	if !ok {
+		return UserDetail{}, ErrNotFound
 	}
 
-	permissions, err := s.repo.GetDirectPermissions(ctx, []uuid.UUID{userID})
+	ok, err = s.repo.SetRoles(ctx, userID, roleIDs, stamp)
 	if err != nil {
-		return UserDetail{}, fmt.Errorf("getting direct permissions: %w", err)
+		return UserDetail{}, fmt.Errorf("setting user roles: %w", err)
+	}
+	if !ok {
+		return UserDetail{}, ErrConflict
 	}
 
-	return UserDetail{
-		User:              updated,
-		Roles:             roles[userID],
-		DirectPermissions: permissions[userID],
-	}, nil
+	updated, _, err := s.GetByID(ctx, userID)
+	if err != nil {
+		return UserDetail{}, err
+	}
+	return updated, nil
+}
+
+func (s *UserService) SetDirectPermissions(ctx context.Context, userID uuid.UUID, permissionIDs []uuid.UUID, stamp string) (UserDetail, error) {
+	_, ok, err := s.repo.GetByID(ctx, userID.String())
+	if err != nil {
+		return UserDetail{}, fmt.Errorf("getting user: %w", err)
+	}
+	if !ok {
+		return UserDetail{}, ErrNotFound
+	}
+
+	ok, err = s.repo.SetDirectPermissions(ctx, userID, permissionIDs, stamp)
+	if err != nil {
+		return UserDetail{}, fmt.Errorf("setting user permissions: %w", err)
+	}
+	if !ok {
+		return UserDetail{}, ErrConflict
+	}
+
+	updated, _, err := s.GetByID(ctx, userID)
+	if err != nil {
+		return UserDetail{}, err
+	}
+	return updated, nil
 }
 
 func (s *UserService) CreateUser(ctx context.Context, email, password, fullName string, userType int16) (User, error) {
@@ -136,7 +181,7 @@ func (s *UserService) CreateUser(ctx context.Context, email, password, fullName 
 	return created, nil
 }
 
-func (s *UserService) DeleteHandler(ctx context.Context, id string) (bool, error) {
+func (s *UserService) DeleteUser(ctx context.Context, id string) (bool, error) {
 	ok, err := s.repo.DeleteUserById(ctx, id)
 	if err != nil {
 		return false, fmt.Errorf("deleting the user : %w", err)

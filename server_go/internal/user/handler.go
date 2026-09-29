@@ -26,6 +26,42 @@ type updateProfileRequest struct {
 	ConcurrencyStamp string  `json:"concurrencyStamp"`
 }
 
+type setRolesRequest struct {
+	RoleIDs          []string `json:"roleIds"`
+	ConcurrencyStamp string   `json:"concurrencyStamp"`
+}
+
+type setPermissionsRequest struct {
+	PermissionIDs    []string `json:"permissionIds"`
+	ConcurrencyStamp string   `json:"concurrencyStamp"`
+}
+
+func writeServiceError(w http.ResponseWriter, action string, err error) {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		server.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
+	case errors.Is(err, ErrConflict):
+		server.WriteError(w, http.StatusConflict, ErrConflict.Error())
+	case errors.Is(err, ErrEmailTaken):
+		server.WriteError(w, http.StatusConflict, ErrEmailTaken.Error())
+	default:
+		log.Printf("%s: %v", action, err)
+		server.WriteError(w, http.StatusInternalServerError, "internal server error")
+	}
+}
+
+func parseUUIDs(raw []string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, len(raw))
+	for i, s := range raw {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, err
+		}
+		ids[i] = id
+	}
+	return ids, nil
+}
+
 func ListHandler(svc *UserService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		users, err := svc.List(r.Context())
@@ -108,15 +144,67 @@ func UpdateMeHandler(svc *UserService) http.HandlerFunc {
 
 		updated, err := svc.UpdateProfile(r.Context(), userID, req.FullName, req.PhoneNumber, req.Address, req.ConcurrencyStamp)
 		if err != nil {
-			switch {
-			case errors.Is(err, ErrNotFound):
-				server.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
-			case errors.Is(err, ErrConflict):
-				server.WriteError(w, http.StatusConflict, ErrConflict.Error())
-			default:
-				log.Printf("update current user: %v", err)
-				server.WriteError(w, http.StatusInternalServerError, "internal server error")
-			}
+			writeServiceError(w, "update current user", err)
+			return
+		}
+
+		server.WriteJSON(w, http.StatusOK, updated)
+	}
+}
+
+func SetRolesHandler(svc *UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid user id")
+			return
+		}
+
+		var req setRolesRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid json data")
+			return
+		}
+
+		roleIDs, err := parseUUIDs(req.RoleIDs)
+		if err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid role id")
+			return
+		}
+
+		updated, err := svc.SetRoles(r.Context(), userID, roleIDs, req.ConcurrencyStamp)
+		if err != nil {
+			writeServiceError(w, "set user roles", err)
+			return
+		}
+
+		server.WriteJSON(w, http.StatusOK, updated)
+	}
+}
+
+func SetPermissionsHandler(svc *UserService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userID, err := uuid.Parse(r.PathValue("id"))
+		if err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid user id")
+			return
+		}
+
+		var req setPermissionsRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid json data")
+			return
+		}
+
+		permissionIDs, err := parseUUIDs(req.PermissionIDs)
+		if err != nil {
+			server.WriteError(w, http.StatusBadRequest, "invalid permission id")
+			return
+		}
+
+		updated, err := svc.SetDirectPermissions(r.Context(), userID, permissionIDs, req.ConcurrencyStamp)
+		if err != nil {
+			writeServiceError(w, "set user permissions", err)
 			return
 		}
 
@@ -176,16 +264,9 @@ func DeleteHandler(svc *UserService) http.HandlerFunc {
 			return
 		}
 
-		_, err = svc.DeleteHandler(r.Context(), userId.String())
+		_, err = svc.DeleteUser(r.Context(), userId.String())
 		if err != nil {
-			switch {
-			case errors.Is(err, ErrNotFound):
-				server.WriteError(w, http.StatusNotFound, ErrNotFound.Error())
-			default:
-				log.Printf("delete user by ID: %v", err)
-				server.WriteError(w, http.StatusInternalServerError, "internal server error")
-			}
-			return
+			writeServiceError(w, "delete user by id", err)
 		}
 		w.WriteHeader(http.StatusNoContent)
 

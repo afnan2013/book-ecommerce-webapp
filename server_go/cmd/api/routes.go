@@ -37,8 +37,8 @@ func newRouter(pool server.DBQuerier, jwtSecret string, allowedOrigin string) ht
 	mux.Handle("GET /api/users/{id}", server.Chain(user.GetByIDHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersRead)))
 	mux.Handle("PUT /api/users/{id}", server.Chain(user.GetByIDHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersUpdate)))
 	mux.Handle("DELETE /api/users/{id}", server.Chain(user.DeleteHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersDelete)))
-	mux.Handle("PUT /api/users/{id}/roles", server.Chain(user.GetByIDHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersUpdate)))
-	mux.Handle("PUT /api/users/{id}/permissions", server.Chain(user.GetByIDHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersUpdate)))
+	mux.Handle("PUT /api/users/{id}/roles", server.Chain(user.SetRolesHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersUpdate)))
+	mux.Handle("PUT /api/users/{id}/permissions", server.Chain(user.SetPermissionsHandler(userSvc), requireAuth, auth.RequirePermission(auth.PermissionUsersUpdate)))
 
 	roleRepo := role.NewRepository(pool)
 	roleSvc := role.NewService(roleRepo)
