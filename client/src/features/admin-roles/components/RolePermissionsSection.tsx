@@ -3,9 +3,8 @@ import { toast } from 'sonner';
 import { useSetRolePermissions } from '../hooks';
 import { describeApiError } from '@/lib/errors/describeApiError';
 import type { Permission } from '@/lib/types/permission';
+import { PermissionPicker } from '@/components/PermissionPicker';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface Props {
@@ -35,15 +34,6 @@ export function RolePermissionsSection({
     for (const id of initialSet) if (!selected.has(id)) return true;
     return false;
   }, [selected, initialSet]);
-
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
 
   const handleSave = () => {
     setPermsMutation.mutate(
@@ -92,28 +82,13 @@ export function RolePermissionsSection({
         {!permissionsLoading && allPermissions.length === 0 && (
           <p className="text-muted-foreground text-sm">No permissions defined.</p>
         )}
-        <ul className="divide-y">
-          {allPermissions.map((perm) => (
-            <li key={perm.id} className="flex items-start gap-3 py-3">
-              <Checkbox
-                id={`perm-${perm.id}`}
-                checked={selected.has(perm.id)}
-                onCheckedChange={() => toggle(perm.id)}
-                disabled={setPermsMutation.isPending}
-              />
-              <div className="flex-1">
-                <Label htmlFor={`perm-${perm.id}`} className="font-medium">
-                  {perm.name}
-                </Label>
-                {perm.description && (
-                  <p className="text-sm text-muted-foreground">
-                    {perm.description}
-                  </p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <PermissionPicker
+          permissions={allPermissions}
+          selected={selected}
+          onChange={setSelected}
+          disabled={setPermsMutation.isPending}
+          idPrefix="perm"
+        />
       </CardContent>
     </Card>
   );
