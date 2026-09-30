@@ -1,0 +1,91 @@
+name: Deploy Web
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy to
+        type: choice
+        options:
+          - dev
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-web-${{ inputs.environment }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      WEB_BUCKET: ${{ vars.WEB_BUCKET }}
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v7
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Vite inlines VITE_* values into the bundle at build time, so each environment needs its own build.
+      - name: Build
+        env:
+          VITE_API_BASE_URL: ${{ vars.API_URL }}/api
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # Hashed assets go first and are never deleted here, so a browser still holding the previous
+      # index.html can load its chunks. index.html and other root files are revalidated on every visit.
+      - name: Upload to S3
+        run: |
+          aws s3 sync dist/assets "s3://$WEB_BUCKET/assets" \
+            --cache-control "public, max-age=31536000, immutable"
+
+          aws s3 sync dist "s3://$WEB_BUCKET" \
+            --exclude "assets/*" \
+            --cache-control "no-cache" \
+            --delete
+
+      - name: Invalidate CloudFront
+        id: cdn
+        run: |
+          origin="$WEB_BUCKET.s3.$AWS_REGION.amazonaws.com"
+          read -r distribution_id domain < <(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?contains(Origins.Items[].DomainName, '$origin')] | [0].[Id, Aliases.Items[0]]" \
+            --output text)
+
+          if [ -z "$distribution_id" ] || [ "$distribution_id" = "None" ]; then
+            echo "::error::No CloudFront distribution found for origin $origin"
+            exit 1
+          fi
+
+          echo "domain=$domain" >> "$GITHUB_OUTPUT"
+          invalidation_id=$(aws cloudfront create-invalidation --distribution-id "$distribution_id" \
+            --paths "/*" --query Invalidation.Id --output text)
+
+          echo "Invalidating $distribution_id ($domain)..."
+          aws cloudfront wait invalidation-completed --distribution-id "$distribution_id" --id "$invalidation_id"
+
+      - name: Smoke test
+        run: curl --fail --silent --show-error --output /dev/null --retry 5 --retry-delay 5 "https://${{ steps.cdn.outputs.domain }}/"

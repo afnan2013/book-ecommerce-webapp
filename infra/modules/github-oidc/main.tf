@@ -126,6 +126,13 @@ data "aws_iam_policy_document" "deploy" {
     resources = ["${var.web_bucket_arn}/*"]
   }
 
+  # The distribution ID changes on every recreate, so the workflow looks it up instead of storing it.
+  statement {
+    sid       = "FindDistribution"
+    actions   = ["cloudfront:ListDistributions"]
+    resources = ["*"]
+  }
+
   statement {
     sid = "InvalidateCdn"
     actions = [
