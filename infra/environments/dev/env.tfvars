@@ -21,11 +21,11 @@ db_skip_final_snapshot   = true
 db_deletion_protection   = false
 
 dns_zone_name = "afnanio.top"
-api_domain = "api.bookstore.dev.afnanio.top"
+api_domain    = "api.bookstore.dev.afnanio.top"
 
-api_cpu           = 256
-api_memory        = 512
-api_desired_count = 0
+api_cpu            = 256
+api_memory         = 512
+api_desired_count  = 0
 log_retention_days = 3
 
 web_domain = "bookstore.dev.afnanio.top"

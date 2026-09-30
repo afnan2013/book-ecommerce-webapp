@@ -81,12 +81,12 @@ module "api_certificate" {
 module "alb" {
   source = "../../modules/alb"
 
-  name_prefix = var.name_prefix
-  vpc_id = module.network.vpc_id
-  subnet_ids = module.network.public_subnet_ids
+  name_prefix       = var.name_prefix
+  vpc_id            = module.network.vpc_id
+  subnet_ids        = module.network.public_subnet_ids
   security_group_id = module.security.alb_sg_id
-  certificate_arn = module.api_certificate.certificate_arn
-  app_port = local.app_port
+  certificate_arn   = module.api_certificate.certificate_arn
+  app_port          = local.app_port
   health_check_path = "/health"
 }
 
