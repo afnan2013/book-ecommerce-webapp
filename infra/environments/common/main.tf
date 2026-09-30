@@ -125,3 +125,18 @@ resource "aws_route53_record" "api" {
     evaluate_target_health = true
   }
 }
+
+module "github_oidc" {
+  source = "../../modules/github-oidc"
+
+  name_prefix        = var.name_prefix
+  github_repository  = "afnan2013/book-ecommerce-webapp"
+  github_environment = var.env
+
+  ecr_repository_arn         = module.ecr.repository_arn
+  ecs_cluster_arn            = module.ecs.cluster_arn
+  ecs_service_arn            = module.ecs.service_arn
+  task_definition_family_arn = module.ecs.task_definition_family_arn
+  pass_role_arns             = [module.ecs.execution_role_arn, module.ecs.task_role_arn]
+  log_group_arn              = module.ecs.log_group_arn
+}
