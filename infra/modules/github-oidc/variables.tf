@@ -33,3 +33,11 @@ variable "pass_role_arns" {
 variable "log_group_arn" {
   type = string
 }
+
+variable "web_bucket_arn" {
+  type = string
+}
+
+variable "cloudfront_distribution_arn" {
+  type = string
+}

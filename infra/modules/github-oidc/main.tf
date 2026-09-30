@@ -109,10 +109,35 @@ data "aws_iam_policy_document" "deploy" {
     actions   = ["logs:GetLogEvents"]
     resources = ["${var.log_group_arn}:log-stream:*"]
   }
+
+  statement {
+    sid       = "ListWebBucket"
+    actions   = ["s3:ListBucket"]
+    resources = [var.web_bucket_arn]
+  }
+
+  statement {
+    sid = "SyncWebFiles"
+    actions = [
+      "s3:GetObject",
+      "s3:PutObject",
+      "s3:DeleteObject",
+    ]
+    resources = ["${var.web_bucket_arn}/*"]
+  }
+
+  statement {
+    sid = "InvalidateCdn"
+    actions = [
+      "cloudfront:CreateInvalidation",
+      "cloudfront:GetInvalidation",
+    ]
+    resources = [var.cloudfront_distribution_arn]
+  }
 }
 
 resource "aws_iam_role_policy" "deploy" {
-  name   = "deploy-api"
+  name   = "deploy"
   role   = aws_iam_role.github_actions.id
   policy = data.aws_iam_policy_document.deploy.json
 }

@@ -78,6 +78,18 @@ module "api_certificate" {
   zone_id     = data.aws_route53_zone.main.zone_id
 }
 
+# CloudFront only accepts certificates from us-east-1, so the same module runs against the Virginia provider.
+module "web_certificate" {
+  source = "../../modules/certificate"
+
+  providers = {
+    aws = aws.us_east_1
+  }
+
+  domain_name = var.web_domain
+  zone_id     = data.aws_route53_zone.main.zone_id
+}
+
 module "alb" {
   source = "../../modules/alb"
 
@@ -143,4 +155,28 @@ module "github_oidc" {
   ]
   pass_role_arns = [module.ecs.execution_role_arn, module.ecs.task_role_arn]
   log_group_arn  = module.ecs.log_group_arn
+
+  web_bucket_arn              = module.web.bucket_arn
+  cloudfront_distribution_arn = module.web.distribution_arn
+}
+
+
+module "web" {
+  source = "../../modules/web"
+
+  name_prefix     = var.name_prefix
+  domain_name     = var.web_domain
+  certificate_arn = module.web_certificate.certificate_arn
+}
+
+resource "aws_route53_record" "web" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = var.web_domain
+  type    = "A"
+
+  alias {
+    name                   = module.web.distribution_domain_name
+    zone_id                = module.web.distribution_zone_id
+    evaluate_target_health = false
+  }
 }
