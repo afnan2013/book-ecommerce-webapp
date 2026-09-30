@@ -60,5 +60,4 @@ variable "dns_zone_name" {
 
 variable "api_domain" {
   type = string
-
 }
