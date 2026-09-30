@@ -37,3 +37,11 @@ output "task_role_arn" {
 output "log_group_arn" {
   value = aws_cloudwatch_log_group.api.arn
 }
+
+output "seed_task_definition_family_arn" {
+  value = aws_ecs_task_definition.seed.arn_without_revision
+}
+
+output "superadmin_password_ssm_name" {
+  value = aws_ssm_parameter.superadmin_password.name
+}

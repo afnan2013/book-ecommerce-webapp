@@ -81,3 +81,7 @@ variable "log_retention_days" {
 variable "web_domain" {
   type = string
 }
+
+variable "superadmin_email" {
+  type = string
+}

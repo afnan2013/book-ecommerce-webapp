@@ -1,5 +1,6 @@
 locals {
-  container_name = "api"
+  container_name      = "api"
+  seed_container_name = "seed"
 }
 
 # ── Cluster and logs ──────────────────────────────────────
@@ -26,6 +27,17 @@ resource "aws_ssm_parameter" "jwt_secret" {
   name  = "/${var.name_prefix}/JWT_SECRET_KEY"
   type  = "SecureString"
   value = random_password.jwt.result
+}
+
+resource "random_password" "superadmin" {
+  length  = 24
+  special = false
+}
+
+resource "aws_ssm_parameter" "superadmin_password" {
+  name  = "/${var.name_prefix}/SUPERADMIN_PASSWORD"
+  type  = "SecureString"
+  value = random_password.superadmin.result
 }
 
 # ── IAM: who may assume the roles ─────────────────────────
@@ -59,6 +71,7 @@ data "aws_iam_policy_document" "execution_secrets" {
     resources = [
       var.database_url_ssm_arn,
       aws_ssm_parameter.jwt_secret.arn,
+      aws_ssm_parameter.superadmin_password.arn,
     ]
   }
 }
@@ -118,6 +131,49 @@ resource "aws_ecs_task_definition" "api" {
         awslogs-group         = aws_cloudwatch_log_group.api.name
         awslogs-region        = var.region
         awslogs-stream-prefix = local.container_name
+      }
+    }
+  }])
+}
+
+# ── Seed task definition: one-off super admin bootstrap ───
+
+# Separate from the API blueprint so the long-running API never receives the admin password.
+resource "aws_ecs_task_definition" "seed" {
+  family                   = "${var.name_prefix}-seed"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.cpu
+  memory                   = var.memory
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+
+  container_definitions = jsonencode([{
+    name      = local.seed_container_name
+    image     = "${var.repository_url}:${var.image_tag}"
+    essential = true
+    command   = ["/app/seed"]
+
+    environment = [
+      { name = "SUPERADMIN_EMAIL", value = var.superadmin_email },
+    ]
+
+    secrets = [
+      { name = "DATABASE_URL", valueFrom = var.database_url_ssm_arn },
+      { name = "SUPERADMIN_PASSWORD", valueFrom = aws_ssm_parameter.superadmin_password.arn },
+    ]
+
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.api.name
+        awslogs-region        = var.region
+        awslogs-stream-prefix = local.seed_container_name
       }
     }
   }])

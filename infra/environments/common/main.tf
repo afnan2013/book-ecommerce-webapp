@@ -110,6 +110,7 @@ module "ecs" {
 
   cors_allowed_origin  = "https://${var.web_domain}"
   database_url_ssm_arn = module.database.database_url_ssm_arn
+  superadmin_email     = var.superadmin_email
 
   depends_on = [module.alb]
 }
@@ -133,10 +134,13 @@ module "github_oidc" {
   github_repository  = "afnan2013/book-ecommerce-webapp"
   github_environment = var.env
 
-  ecr_repository_arn         = module.ecr.repository_arn
-  ecs_cluster_arn            = module.ecs.cluster_arn
-  ecs_service_arn            = module.ecs.service_arn
-  task_definition_family_arn = module.ecs.task_definition_family_arn
-  pass_role_arns             = [module.ecs.execution_role_arn, module.ecs.task_role_arn]
-  log_group_arn              = module.ecs.log_group_arn
+  ecr_repository_arn = module.ecr.repository_arn
+  ecs_cluster_arn    = module.ecs.cluster_arn
+  ecs_service_arn    = module.ecs.service_arn
+  runnable_task_family_arns = [
+    module.ecs.task_definition_family_arn,
+    module.ecs.seed_task_definition_family_arn,
+  ]
+  pass_role_arns = [module.ecs.execution_role_arn, module.ecs.task_role_arn]
+  log_group_arn  = module.ecs.log_group_arn
 }

@@ -66,9 +66,9 @@ data "aws_iam_policy_document" "deploy" {
   }
 
   statement {
-    sid       = "RunMigrations"
+    sid       = "RunOneOffTasks"
     actions   = ["ecs:RunTask"]
-    resources = ["${var.task_definition_family_arn}:*"]
+    resources = [for arn in var.runnable_task_family_arns : "${arn}:*"]
 
     condition {
       test     = "ArnEquals"

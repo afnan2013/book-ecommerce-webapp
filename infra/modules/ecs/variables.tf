@@ -53,3 +53,7 @@ variable "cors_allowed_origin" {
 variable "database_url_ssm_arn" {
   type = string
 }
+
+variable "superadmin_email" {
+  type = string
+}

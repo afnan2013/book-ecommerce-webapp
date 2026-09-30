@@ -8,6 +8,10 @@ on:
         type: choice
         options:
           - dev
+      seed:
+        description: Create the super admin after deploying (first deploy of a fresh environment)
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +33,8 @@ jobs:
       ECS_SERVICE: ${{ vars.ECS_SERVICE }}
       TASK_FAMILY: ${{ vars.TASK_FAMILY }}
       CONTAINER_NAME: ${{ vars.CONTAINER_NAME }}
+      SEED_TASK_FAMILY: ${{ vars.SEED_TASK_FAMILY }}
+      SEED_CONTAINER_NAME: seed
       API_URL: ${{ vars.API_URL }}
       IMAGE_TAG: ${{ github.sha }}
 
@@ -90,70 +96,13 @@ jobs:
         env:
           IMAGE: ${{ steps.image.outputs.uri }}
         run: |
-          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query taskDefinition > current.json
-
-          jq --arg image "$IMAGE" --arg name "$CONTAINER_NAME" '
-            .containerDefinitions |= map(if .name == $name then .image = $image else . end)
-            | del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
-                  .compatibilities, .registeredAt, .registeredBy)
-          ' current.json > taskdef.json
-
-          arn=$(aws ecs register-task-definition --cli-input-json file://taskdef.json \
-            --query taskDefinition.taskDefinitionArn --output text)
-
-          log_options=$(jq -c --arg name "$CONTAINER_NAME" \
-            '.containerDefinitions[] | select(.name == $name) | .logConfiguration.options' taskdef.json)
-
+          arn=$(.github/scripts/register-revision.sh "$TASK_FAMILY" "$CONTAINER_NAME" "$IMAGE")
           echo "arn=$arn" >> "$GITHUB_OUTPUT"
-          echo "log_group=$(jq -r '.["awslogs-group"]' <<< "$log_options")" >> "$GITHUB_OUTPUT"
-          echo "log_prefix=$(jq -r '.["awslogs-stream-prefix"]' <<< "$log_options")" >> "$GITHUB_OUTPUT"
           echo "Registered $arn"
 
       # Runs before the rollout so new tasks never start against an old schema.
       - name: Run database migrations
-        env:
-          TASK_DEFINITION: ${{ steps.taskdef.outputs.arn }}
-          LOG_GROUP: ${{ steps.taskdef.outputs.log_group }}
-          LOG_PREFIX: ${{ steps.taskdef.outputs.log_prefix }}
-        run: |
-          network=$(aws ecs describe-services --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
-            --query 'services[0].networkConfiguration' --output json)
-          overrides=$(jq -nc --arg name "$CONTAINER_NAME" \
-            '{containerOverrides: [{name: $name, command: ["/app/migrate", "up"]}]}')
-
-          task_arn=$(aws ecs run-task \
-            --cluster "$ECS_CLUSTER" \
-            --task-definition "$TASK_DEFINITION" \
-            --launch-type FARGATE \
-            --network-configuration "$network" \
-            --overrides "$overrides" \
-            --started-by "github-actions-$GITHUB_RUN_ID" \
-            --query 'tasks[0].taskArn' --output text)
-
-          if [ -z "$task_arn" ] || [ "$task_arn" = "None" ]; then
-            echo "::error::Migration task failed to start"
-            exit 1
-          fi
-
-          echo "Migration task: $task_arn"
-          aws ecs wait tasks-stopped --cluster "$ECS_CLUSTER" --tasks "$task_arn"
-
-          task_id="${task_arn##*/}"
-          echo "── migration logs ──"
-          aws logs get-log-events \
-            --log-group-name "$LOG_GROUP" \
-            --log-stream-name "$LOG_PREFIX/$CONTAINER_NAME/$task_id" \
-            --query 'events[].message' --output text || echo "(no logs found)"
-
-          exit_code=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$task_arn" \
-            --query "tasks[0].containers[?name=='$CONTAINER_NAME'].exitCode | [0]" --output text)
-
-          if [ "$exit_code" != "0" ]; then
-            reason=$(aws ecs describe-tasks --cluster "$ECS_CLUSTER" --tasks "$task_arn" \
-              --query 'tasks[0].stoppedReason' --output text)
-            echo "::error::Migration failed (exit code $exit_code): $reason"
-            exit 1
-          fi
+        run: .github/scripts/run-one-off-task.sh "${{ steps.taskdef.outputs.arn }}" "$CONTAINER_NAME" '["/app/migrate", "up"]'
 
       - name: Deploy service
         env:
@@ -185,3 +134,12 @@ jobs:
 
       - name: Smoke test
         run: curl --fail --silent --show-error --retry 10 --retry-delay 6 --retry-all-errors "$API_URL/health"
+
+      # After the rollout, because the API creates the SuperAdmin role when it boots.
+      - name: Seed super admin
+        if: inputs.seed
+        env:
+          IMAGE: ${{ steps.image.outputs.uri }}
+        run: |
+          arn=$(.github/scripts/register-revision.sh "$SEED_TASK_FAMILY" "$SEED_CONTAINER_NAME" "$IMAGE")
+          .github/scripts/run-one-off-task.sh "$arn" "$SEED_CONTAINER_NAME"

@@ -29,3 +29,5 @@ api_desired_count  = 0
 log_retention_days = 3
 
 web_domain = "bookstore.dev.afnanio.top"
+
+superadmin_email = "admin@afnanio.top"

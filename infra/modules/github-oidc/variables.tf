@@ -22,8 +22,8 @@ variable "ecs_service_arn" {
   type = string
 }
 
-variable "task_definition_family_arn" {
-  type = string
+variable "runnable_task_family_arns" {
+  type = list(string)
 }
 
 variable "pass_role_arns" {
