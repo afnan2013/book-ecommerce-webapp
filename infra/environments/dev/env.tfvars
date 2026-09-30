@@ -19,3 +19,6 @@ db_allocated_storage     = 20
 db_backup_retention_days = 0
 db_skip_final_snapshot   = true
 db_deletion_protection   = false
+
+dns_zone_name = "afnanio.top"
+api_domain = "api.bookstore.dev.afnanio.top"

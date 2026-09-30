@@ -35,7 +35,7 @@ variable "private_subnets" {
 }
 
 variable "db_allocated_storage" {
-  type = number  
+  type = number
 }
 
 variable "db_instance_class" {
@@ -47,9 +47,18 @@ variable "db_deletion_protection" {
 }
 
 variable "db_backup_retention_days" {
-  type = number  
+  type = number
 }
 
 variable "db_skip_final_snapshot" {
   type = bool
+}
+
+variable "dns_zone_name" {
+  type = string
+}
+
+variable "api_domain" {
+  type = string
+
 }

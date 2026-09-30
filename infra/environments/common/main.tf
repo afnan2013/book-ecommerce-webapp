@@ -36,16 +36,16 @@ module "security" {
   source = "../../modules/security"
 
   name_prefix = var.name_prefix
-  vpc_id = module.network.vpc_id
-  app_port = 8080
-  db_port = 5432
+  vpc_id      = module.network.vpc_id
+  app_port    = 8080
+  db_port     = 5432
 }
 
 module "ecr" {
   source = "../../modules/ecr"
 
   repository_name = "${var.name_prefix}-api"
-  images_to_keep = 10
+  images_to_keep  = 10
 }
 
 module "database" {
@@ -64,4 +64,15 @@ module "database" {
   backup_retention_days = var.db_backup_retention_days
   skip_final_snapshot   = var.db_skip_final_snapshot
   deletion_protection   = var.db_deletion_protection
+}
+
+data "aws_route53_zone" "main" {
+  name = var.dns_zone_name
+}
+
+module "api_certificate" {
+  source = "../../modules/certificate"
+
+  domain_name = var.api_domain
+  zone_id     = data.aws_route53_zone.main.zone_id
 }
