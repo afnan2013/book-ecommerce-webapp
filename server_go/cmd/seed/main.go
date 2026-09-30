@@ -24,15 +24,17 @@ func main() {
 		log.Println("no .env file found, relying on real environment variables")
 	}
 
+	// Env vars let the seed run unattended as an ECS task, where there is no stdin to prompt on.
+	email := os.Getenv("SUPERADMIN_EMAIL")
+	password := os.Getenv("SUPERADMIN_PASSWORD")
+
 	reader := bufio.NewReader(os.Stdin)
-
-	fmt.Print("Super admin email: ")
-	email, _ := reader.ReadString('\n')
-	email = strings.TrimSpace(email)
-
-	fmt.Print("Super admin password: ")
-	password, _ := reader.ReadString('\n')
-	password = strings.TrimSpace(password)
+	if email == "" {
+		email = prompt(reader, "Super admin email: ")
+	}
+	if password == "" {
+		password = prompt(reader, "Super admin password: ")
+	}
 
 	if email == "" {
 		log.Fatal("email is required")
@@ -69,6 +71,12 @@ func main() {
 	}
 
 	log.Printf("%s is now a %s", email, superAdminRoleName)
+}
+
+func prompt(reader *bufio.Reader, label string) string {
+	fmt.Print(label)
+	value, _ := reader.ReadString('\n')
+	return strings.TrimSpace(value)
 }
 
 func findOrCreateUser(ctx context.Context, pool server.DBQuerier, email, password string) (uuid.UUID, error) {
