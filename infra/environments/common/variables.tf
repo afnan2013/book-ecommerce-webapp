@@ -33,3 +33,23 @@ variable "private_subnets" {
     az   = string
   }))
 }
+
+variable "db_allocated_storage" {
+  type = number  
+}
+
+variable "db_instance_class" {
+  type = string
+}
+
+variable "db_deletion_protection" {
+  type = bool
+}
+
+variable "db_backup_retention_days" {
+  type = number  
+}
+
+variable "db_skip_final_snapshot" {
+  type = bool
+}

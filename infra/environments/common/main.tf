@@ -47,3 +47,21 @@ module "ecr" {
   repository_name = "${var.name_prefix}-api"
   images_to_keep = 10
 }
+
+module "database" {
+  source = "../../modules/database"
+
+  name_prefix       = var.name_prefix
+  subnet_ids        = module.network.private_subnet_ids
+  security_group_id = module.security.rds_sg_id
+
+  engine_version    = "17"
+  instance_class    = var.db_instance_class
+  allocated_storage = var.db_allocated_storage
+  db_name           = "bookstore"
+  username          = "be"
+
+  backup_retention_days = var.db_backup_retention_days
+  skip_final_snapshot   = var.db_skip_final_snapshot
+  deletion_protection   = var.db_deletion_protection
+}

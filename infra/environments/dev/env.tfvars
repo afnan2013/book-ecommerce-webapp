@@ -13,3 +13,9 @@ private_subnets = {
   a = { cidr = "10.0.11.0/24", az = "ap-south-1a" }
   b = { cidr = "10.0.12.0/24", az = "ap-south-1b" }
 }
+
+db_instance_class        = "db.t4g.micro"
+db_allocated_storage     = 20
+db_backup_retention_days = 0
+db_skip_final_snapshot   = true
+db_deletion_protection   = false
