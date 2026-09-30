@@ -89,3 +89,27 @@ module "alb" {
   app_port = local.app_port
   health_check_path = "/health"
 }
+
+module "ecs" {
+  source = "../../modules/ecs"
+
+  name_prefix       = var.name_prefix
+  region            = var.region
+  subnet_ids        = module.network.public_subnet_ids
+  security_group_id = module.security.task_sg_id
+  target_group_arn  = module.alb.target_group_arn
+
+  repository_url = module.ecr.repository_url
+  image_tag      = "bootstrap"
+  app_port       = local.app_port
+
+  cpu                = var.api_cpu
+  memory             = var.api_memory
+  desired_count      = var.api_desired_count
+  log_retention_days = var.log_retention_days
+
+  cors_allowed_origin  = "https://${var.web_domain}"
+  database_url_ssm_arn = module.database.database_url_ssm_arn
+
+  depends_on = [module.alb]
+}

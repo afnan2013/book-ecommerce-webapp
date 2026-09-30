@@ -61,3 +61,23 @@ variable "dns_zone_name" {
 variable "api_domain" {
   type = string
 }
+
+variable "api_cpu" {
+  type = number
+}
+
+variable "api_memory" {
+  type = number
+}
+
+variable "api_desired_count" {
+  type = number
+}
+
+variable "log_retention_days" {
+  type = number
+}
+
+variable "web_domain" {
+  type = string
+}
