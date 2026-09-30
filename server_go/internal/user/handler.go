@@ -267,6 +267,7 @@ func DeleteHandler(svc *UserService) http.HandlerFunc {
 		_, err = svc.DeleteUser(r.Context(), userId.String())
 		if err != nil {
 			writeServiceError(w, "delete user by id", err)
+			return
 		}
 		w.WriteHeader(http.StatusNoContent)
 
