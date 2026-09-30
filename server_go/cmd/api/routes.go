@@ -13,6 +13,11 @@ import (
 func newRouter(pool server.DBQuerier, jwtSecret string, allowedOrigin string) http.Handler {
 	mux := http.NewServeMux()
 
+	// Kept shallow on purpose: a DB check here would fail every task at once during a DB blip and turn it into a restart storm.
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		server.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	})
+
 	requireAuth := auth.RequireAuth(jwtSecret)
 
 	bookRepo := book.NewRepository(pool)

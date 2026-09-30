@@ -1,0 +1,7 @@
+.env
+.git
+tmp/
+server_go
+main
+*.test
+coverage.out
